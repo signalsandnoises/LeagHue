@@ -4,7 +4,6 @@
 
 from phue import Bridge
 from time import sleep
-import sqlite3
 import requests
 import urllib3
 
@@ -55,6 +54,7 @@ def rainbow(IDs, time_per_cycle=2, cycles=1):
 		lights[ID].xy = init_vals[ID]
 
 
+
 league_address = "​https://127.0.0.1:2999/liveclientdata/allgamedata/"
 while True:
 	try:
@@ -77,16 +77,17 @@ while True:
 				print("or none of the players match the current user.")
 				break
 
-			# Now we have their playerIndex!
-			championName = json["allPlayers"][playerIndex][championName]
+			# Now we have their playerIndex, and can get their playerInfo!
+			playerInfo = json["allPlayers"][playerIndex]
+			championName = playerInfo[championName]
 			formattedName = "".join(championName.split())  # Master Yi's URL is .../MasterYi.json
-			skinID = json["allPlayers"][playerIndex]["skinID"]
+			skinID = playerInfo["skinID"]
+			team = playerInfo["team"]
 
 			# TODO this needs to be auto-loaded somehow according to the latest patch
 			data_dragon_url = "https://ddragon.leagueoflegends.com/cdn/11.6.1/data/en_US/champion/" + formattedName
 			skinName = requests.get(data_dragon_url)["data"][formattedName]["skins"][skinID]["name"]
 
-			
 
 
 	
