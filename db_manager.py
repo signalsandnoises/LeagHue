@@ -32,6 +32,14 @@ if __name__ == "__main__":
 		con.commit()
 		con.close()
 
+	'''TODO our database needs another table.
+	Query https://ddragon.leagueoflegends.com/cdn/11.6.1/data/en_US/champion.json
+	but modify the URL for the latest patch. Then do a key reversal: store {"Champion Name":"championID"}.
+	
+	Have the db_manager __main__ do this at the very beginning.
+	'''
+
+
 
 def get_state(skinName):
 	# Return the stored colors as a dict of lightIDs
