@@ -2,7 +2,6 @@
 # button and start the script within 30 seconds (unless
 # you've used phue.Bridge before).
 
-from phue import Bridge
 from time import sleep
 import requests
 import urllib3
@@ -13,47 +12,12 @@ ip = "10.0.0.52"
 active_IDs = [3,4,5]
 username = "t9EuSmHFC2o7bTtt5Lyq5eUMKNU0otLLN4nHE9wO"
 
+light_manager = LightManager(active_IDs, ip, username)
+
 ## The League client is https only with an insecure cert. 
 #  We'll just.. suppress it for now. It's all on localhost 
-#  anyway, who's going to invade?
+#  anyway, who's going to invade us?  TODO
 urllib3.disable_warnings()
-
-## To interface with lights through phue.py
-b = Bridge(ip)
-lights = b.get_light_objects('id')
-
-## To interface with lights through http
-base_address = '/'.join(['http:/',
-	ip,
-	"api",
-	username,
-	"lights"])
-# a dictionary containing each light's address from which to query
-address = {ID: '/'.join([base_address, str(ID)]) for ID in active_IDs}
-
-## For rainbow()
-# Store the vertices of each light's color gamut for rainbow()
-gamut_vertices = {}
-for ID in active_IDs:
-	gamut_vertices[ID] = requests.get(address[ID]).json()['capabilities']['control']['colorgamut']
-
-
-def rainbow(IDs, time_per_cycle=2, cycles=1):
-	init_vals = {ID: requests.get(address[ID]).json()['state']['xy'] for ID in IDs}
-	#init_vals = {ID: requests.get('/'.join([address, str(ID)])).json()['state']['xy'] for ID in IDs}
-
-	for cycle in range(cycles):
-		for i in range(3):
-			for ID in IDs:
-				lights[ID].transitiontime = time_per_cycle*10/3
-				lights[ID].xy=gamut_vertices[ID][i]
-			sleep(time_per_cycle/3)
-
-	for ID in IDs:
-		lights[ID].transitiontime=40
-		lights[ID].xy = init_vals[ID]
-
-
 
 league_address = "​https://127.0.0.1:2999/liveclientdata/allgamedata/"
 
@@ -72,7 +36,8 @@ while True:
 		json = response.json()
 
 		# If we've just started,
-		if not initialized:  # Let's store the summoner's info and their skin
+		if not initialized:
+			# Let's get the playerIndex.
 			summonerName = json["activePlayer"]["summonerName"]
 			playerIndex = 0
 			while json["allPlayers"][playerIndex]["summonerName"] != summonerName:
@@ -83,21 +48,39 @@ while True:
 				print("or none of the players match the current user.")
 				break
 
-			# Now we have their playerIndex. Let's get their playerInfo!
+			# Now that we have playerIndex, let's get playerInfo
 			playerInfo = json["allPlayers"][playerIndex]
 			championName = playerInfo[championName]
-
-			# TODO there exists no consistent function to get a champions "[id].json". 
-			#      See Kog'Maw -> KogMaw.json, Cho'Gath -> Chogath.json.
-			#      Gonna have to find a mapping somewhere from 
-			formattedName = "".join(championName.split()) 
-
 			skinID = playerInfo["skinID"]
 			team = playerInfo["team"]
 
+			# To obtain skinName:
+			# championName -> championID 
+			# championID + skinID -> skinName
+
+			# TODO there exists no consistent function to get a champions "[id].json". 
+			#      See Kog'Maw -> KogMaw.json, Cho'Gath -> Chogath.json.
+			#      Gonna have to find a mapping somewhere
+
 			# TODO this needs to be auto-loaded somehow according to the latest patch
-			data_dragon_url = "https://ddragon.leagueoflegends.com/cdn/11.6.1/data/en_US/champion/" + formattedName
-			skinName = requests.get(data_dragon_url)["data"][formattedName]["skins"][skinID]["name"]
+			# TODO can region be configured?	
+			data_dragon_url = "https://ddragon.leagueoflegends.com/cdn/11.6.1/data/en_US/"
+
+			allChampionData = requests.get(data_dragon_url+"champion.json").json()["data"]
+			# keys are championIDs
+			# vals are attributes including championName
+			championID = None
+			for key in allChampionData:
+				val = allChampionData[key]["name"]
+				if championName == val:
+					championID = key
+			if championID == None:
+				# TODO does this happen?
+				print("Oh no we brokes it. Can't get a champion's internal ID. How will we ever get skinName?")
+
+			skinName = requests.get(data_dragon_url+"champion/"+championID+".json")["data"][championID]["skins"][skinID]["name"]
+			state = db_manager.get_state(skinName)
+			
 
 
 
@@ -111,7 +94,17 @@ Events:
 	victory: turn blue, then reset after 10s
 	defeat: turn red, then reset after 10s
 
-On
+
+On initialization, we create a LightManager which manages the lighting environment.
+
+In the main-loop, we query to detect whether the game has started, once per second. Once it has,
+we construct GameState.
+
+The GameState is initialized with a champion and their skin. It tracks all in-game events.
+
+
+Create a 
+
 '''
 
 

@@ -77,10 +77,10 @@ def set_state(skinName, state):
 # To confirm that a state is correctly overwritten
 def test_getSetStates():
 	set_state("TestName1", "state1old")
-	set_state("TestName2", "state2")
 	set_state("TestName1", "state1new")
 
 	return get_state("TestName1") == "state1new"
+
 
 def test_GetNonexistentState():
 	return get_state("NonexistentState") is None
