@@ -35,19 +35,24 @@ while True:
 		response = None
 		initialized = False
 		next_event_id = 0
-		sleep(1)
+		sleep(2)
 		i += 1
 
 	if response is not None:  # Client's running.
 		json = response.json()
-
 		if 'events' in json:  # wait for the game to officially start
 			if len(json['events']['Events']) > 0:
 				print("Game started.")
 
+				intergame_state = light_manager.get_state()
+
 				# TODO I hate this file/class naming
 				game_manager = GameState.GameManager(light_manager, json)
-		sleep(0.05)
+
+				# Once the GameManager exits, we go back to the usual state and poll at 0.5 Hz through the try/except clause
+				light_manager.apply_state(intergame_state)
+		sleep(0.05) # We poll at 20 Hz if the HTTP connection works but the game hasn't started.
+
 			
 
 

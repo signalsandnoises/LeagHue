@@ -5,9 +5,10 @@ import db_manager
 
 class LightManager:
 	# constants
-	WHITE = [0.35,0.35]
-	DEFAULT = [0.4,0.2] # magenta-purpleish
-
+	WHITE = [0.347,0.357]
+	DEFAULT = [0.22,0.45] # ruined-king green
+	BLUE = [0.156,0.145]
+	RED = [0.678,0.3018]
 
 	def __init__(self, active_IDs, ip, username):
 		# INPUT params:

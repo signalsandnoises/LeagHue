@@ -10,9 +10,9 @@ from time import sleep
 
 class GameManager:
 
-	patch = "11.6.1"
+	patch = "11.7.1"
 	league_address = "https://127.0.0.1:2999/liveclientdata/allgamedata/"
-
+	time_buffer = 10
 
 	def __init__(self, light_manager, json):
 		'''
@@ -25,10 +25,12 @@ class GameManager:
 			championID+skinID -> skinName
 		Then we can set the color.
 		'''
-		self.latestEventID = 0;
+		self.lastEventID = 0
+		self.lastColorChangeTime = 0
 
 		self.light_manager = light_manager
-		self.light_manager.apply_color(xy=light_manager.WHITE, transitiontime=1, brightness_coeff=0.3)
+		self.light_manager.apply_color(xy=light_manager.WHITE, transitiontime=10, brightness_coeff=0.3)
+
 
 		# summonerName -> playerIndex
 		self.summonerName = json["activePlayer"]["summonerName"]
@@ -78,6 +80,7 @@ class GameManager:
 		if self.skinName == 'default':
 			self.skinName = championName
 		
+		# Now we can get and apply the state.
 		state = db_manager.get_state(self.skinName)
 		if state is None:
 			self.light_manager.apply_color(transitiontime=20)
@@ -87,6 +90,7 @@ class GameManager:
 			state = {str(key): state[key] for key in state}
 			self.light_manager.apply_state(state, transitiontime=20)
 
+		self.state_to_remember = light_manager.get_state()
 
 		self.main_loop()
 
@@ -99,27 +103,41 @@ class GameManager:
 				# Game is no longer running.
 				break
 
+			# Let's find out what's happened. Multiple events may occur.
+			events = response["events"]["Events"]
+			freshEvents = events[self.lastEventID + 1:]
 
+			# We will handle AT MOST one event at a time.
+			# Possible events are: GameEnd, Ace.
+			# During the handling of an event, the LightManager may sleep.
+			# This will cause the main_loop to run at sporadic frequencies during intense periods
+			if len(freshEvents > 0):
+				currentTime = response["gameData"]["gameTime"]
+				freshEventNames = [event["EventName"] for event in freshEvents]
 
-	"""
-	def main_loop(self):
-		command = None
-		while command not in ["store", "save", "help"]:
-			command = input(">>>")
-			command = command.lower()
-			if command == "help":
-				print("You are using lights " + str(self.light_manager.active_IDs) + ".")
-				print("You are currently playing " + self.skinName + ".")
-				print("You can adjust these Hue lights and save the configuration for " + self.skinName +
-					  " with 'store'")
-			if command == "store" or command == "save":
-				try:
-					state = self.light_manager.get_state()
-					db_manager.set_state(self.skinName, str(state))
-					print("Stored for " +self.skinName + "!")
-				except:
-					print("Oh no, something went wrong!")
-			else:
-				print("Invalid input. See 'help'.")
-			command = None
-	"""
+				# If the game ends
+				if "GameEnd" in freshEventNames:
+					# If the Hue color is reliable, let's store it.
+					if (currentTime - self.lastColorChangeTime) > self.time_buffer:
+						db_manager.set_state(self.skinName, self.light_manager.get_state())
+					# Otherwise we'll store whatever we last saw as reliable.
+					else:
+						db_manager.set_state(self.skinName, self.state_to_remember)
+
+					result = [event["Result"] for event in freshEvents if event["EventName"] == "GameEnd"][0]
+					if result == "Win":
+						self.light_manager.apply_color(xy=self.light_manager.BLUE)
+					else:
+						self.light_manager.apply_color(xy=self.light_manager.RED)
+					sleep(4)
+					break
+				elif "MinionsSpawning" in freshEventNames:
+					self.state_to_remember = light_manager.get_state()
+				elif "Ace" in freshEventNames:
+					acingTeam = [event["AcingTeam"] for event in freshEvents if event["EventName"] == "Ace"][0]
+					if acingTeam = self.team:
+						# Do the rainbow!
+						self.state_to_remember = light_manager.get_state()
+						self.lastColorChangeTime = currentTime
+				
+				self.lastEventID = freshEvents[-1]["EventID"]
