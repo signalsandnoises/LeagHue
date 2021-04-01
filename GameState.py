@@ -12,7 +12,8 @@ class GameManager:
 
 	patch = "11.7.1"
 	league_address = "https://127.0.0.1:2999/liveclientdata/allgamedata/"
-	time_buffer = 10
+	time_buffer = 10  # minimum allowable number of seconds between end-game and any previous color changes
+					  # for accurately storing champion color.
 
 	def __init__(self, light_manager, json):
 		'''
