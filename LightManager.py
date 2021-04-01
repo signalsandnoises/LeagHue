@@ -1,7 +1,7 @@
 from phue import Bridge
 from time import sleep
 import requests
-import db_manager
+import random
 
 class LightManager:
 	# constants
@@ -39,7 +39,25 @@ class LightManager:
 		for ID in active_IDs:
 			self.gamut_vertices[ID] = requests.get(self.address[ID]).json()['capabilities']['control']['colorgamut']
 
+	# For each active light, begin the colorloop.
+	# Buffer denotes how far apart each light will be in the cycle.
+	#        in unit revolutions
+	# Buffer should be in [0,1]. Note that the endpoints are functionally identical.
+	def colorloop(self, buffer=0.005):
+		hue = int(random.uniform(0,65535))
+		buffer = int(buffer*65535)
+		for ID in self.active_IDs:
+			self.lights[ID].hue = hue
+			r = requests.put(self.address[ID]+"/state/", json={'effect':'colorloop'})
+			hue = (hue + buffer) % 65535
 
+	def end_colorloop(self):
+		for ID in self.active_IDs:
+			r = requests.put(self.address[ID]+"/state/", json={'effect':'none'})
+
+	# Custom rainbow function.
+	# Unlike the Hue colorloop effect, the time per cycle can be adjusted.
+	# Will return to original color when finished.
 	def rainbow(self, time_per_cycle=2, cycles=1):
 		# Store initial value
 		init_vals = {ID: requests.get(self.address[ID]).json()['state']['xy'] for ID in self.active_IDs}

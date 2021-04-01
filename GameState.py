@@ -87,7 +87,6 @@ class GameManager:
 			state = {str(key): state[key] for key in state}
 			self.light_manager.apply_state(state, transitiontime=20)
 
-
 		self.main_loop()
 
 	def main_loop(self):
