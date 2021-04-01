@@ -47,6 +47,7 @@ def get_state(skinName):
 
 	# we can instantiate con/cur in these methods because
 	# they are called ~once per game
+	skinName = sanitize(skinName)
 	con = sqlite3.connect(databaseName)
 	cur = con.cursor()
 	query = '''SELECT state FROM states
@@ -58,21 +59,32 @@ def get_state(skinName):
 	else:
 		return state[0]  # state is a tuple with one element
 
-
+# skinName is a string
+# state is a JSON string e.g. '{"3":[0.3,0.3], "4":[0.4,0.4]}'
 def set_state(skinName, state):
 	con = sqlite3.connect(databaseName)
 	cur = con.cursor()
-	
+
+	# TODO we've gotta do better input sanitation or something
+	skinName = sanitize(skinName)
+
 	# Remove entry for skin if it exists
 	query = "DELETE FROM states WHERE states.skinName == \'{}\'".format(skinName)
 	cur.execute(query)
+	#query = "DELETE FROM states WHERE states.skinName == ?"
+	#cur.execute(query, (skinName))
 
 	# Then insert the new entry for the skin
 	query = "INSERT INTO states VALUES (\'{}\', \'{}\')".format(skinName, state)
 	cur.execute(query)
+	#query = "INSERT INTO states VALUES (?, ?)"
+	#cur.execute(query, (skinName, state))
 
 	con.commit()
 	con.close()
+
+def sanitize(string):
+	return ''.join(string.split('\''))
 
 # To confirm that a state is correctly overwritten
 def test_getSetStates():
