@@ -59,9 +59,12 @@ class LightManager:
 	# Custom rainbow function.
 	# Unlike the Hue colorloop effect, the time per cycle can be adjusted.
 	# Will return to original color when finished.
-	def rainbow(self, time_per_cycle=2, cycles=1):
+	def rainbow(self, time_per_cycle=2, cycles=1, brightness_coeff=1):
 		# Store initial value
 		init_vals = {ID: requests.get(self.address[ID]).json()['state']['xy'] for ID in self.active_IDs}
+
+		for ID in self.active_IDs:
+			self.lights[ID].brightness = int(brightness_coeff*self.brightness[ID])
 
 		for cycle in range(cycles):
 			# Rainbow by transitioning to all three corners of gamut
@@ -75,10 +78,12 @@ class LightManager:
 		for ID in self.active_IDs:
 			self.lights[ID].transitiontime=40
 			self.lights[ID].xy = init_vals[ID]
+			self.lights[ID].brightness = self.brightness[ID]
 
 	# Returns a JSON string for each dictionary's xy
 	# e.g. '{"3":[0.3,0.3], "4":[0.4,0.4]}'
 	# for good input into db_manager.set_state()
+	# TODO but NOT for good input into LightManager.apply_state()
 	def get_state(self):
 		# We need double quotes around the keys
 		result = {str(ID): self.lights[ID].xy for ID in self.active_IDs}
@@ -87,7 +92,8 @@ class LightManager:
 
 	def apply_state(self, state, transitiontime=4, brightness_coeff=1):
 		# state should be a dictionary {lightid: [x1, y1], ...}
-		# lightid may be integer or string (e.g. 3 or '3') # TODO this introduces problems on .xy and .brightness
+		# lightid may be integer or string (e.g. 3 or '3') # TODO this introduces problems on .xy and .brightness. c
+		#  													      currently, it has to be string.
 		# transitiontime is an integer in unit deciseconds.
 		for ID in state:
 			intID = int(ID)

@@ -70,7 +70,8 @@ class GameManager:
 		if championID == None:
 			# TODO does this happen? We might fail to get a champion's ID
 			# if we don't have the latest data dragon.
-			print("Oh no we brokes it. Can't get a champion's internal ID. How will we ever get skinName?")
+			raise KeyError("Couldn't recognize your champion. Do I know the latest patch number?")
+
 
 		# championID+skinID -> skinName
 		championData = requests.get(data_dragon_url+"champion/"+championID+".json").json()
@@ -91,8 +92,10 @@ class GameManager:
 			state = {str(key): state[key] for key in state}
 			self.light_manager.apply_state(state, transitiontime=20)
 
+		# We will try to remember what light state the user wants for this skin,
+		#    and sporadically check if they've adjusted the lights,
+		#    particularly at aces and at endgame.
 		self.state_to_remember = light_manager.get_state()
-
 		self.main_loop()
 
 	def main_loop(self):
@@ -112,7 +115,7 @@ class GameManager:
 			# Possible events are: GameEnd, Ace.
 			# During the handling of an event, the LightManager may sleep.
 			# This will cause the main_loop to run at sporadic frequencies during intense periods
-			if len(freshEvents > 0):
+			if len(freshEvents) > 0:
 				currentTime = response["gameData"]["gameTime"]
 				freshEventNames = [event["EventName"] for event in freshEvents]
 
@@ -133,12 +136,13 @@ class GameManager:
 					sleep(4)
 					break
 				elif "MinionsSpawning" in freshEventNames:
-					self.state_to_remember = light_manager.get_state()
+					self.state_to_remember = self.light_manager.get_state()
 				elif "Ace" in freshEventNames:
 					acingTeam = [event["AcingTeam"] for event in freshEvents if event["EventName"] == "Ace"][0]
-					if acingTeam = self.team:
+					if acingTeam == self.team:
 						# Do the rainbow!
-						self.state_to_remember = light_manager.get_state()
+						self.state_to_remember = self.light_manager.get_state()
+						self.light_manager.rainbow(brightness_coeff=0.1)
 						self.lastColorChangeTime = currentTime
 				
 				self.lastEventID = freshEvents[-1]["EventID"]

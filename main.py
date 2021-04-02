@@ -7,6 +7,7 @@ import requests
 import urllib3
 import LightManager
 import GameState
+from json import loads
 
 ## parameters
 #  TODO store these and load from config.txt
@@ -50,7 +51,7 @@ while True:
 				game_manager = GameState.GameManager(light_manager, json)
 
 				# Once the GameManager exits, we go back to the usual state and poll at 0.5 Hz through the try/except clause
-				light_manager.apply_state(intergame_state)
+				light_manager.apply_state(loads(intergame_state))
 		sleep(0.05) # We poll at 20 Hz if the HTTP connection works but the game hasn't started.
 
 			
