@@ -4,7 +4,6 @@
 from json import loads as str2json
 import requests
 import db_manager
-import tkinter as tk
 from time import sleep
 
 
