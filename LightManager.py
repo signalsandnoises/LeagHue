@@ -21,7 +21,7 @@ class LightManager:
 		self.username = username
 
 		# To interface with lights through phue.py
-		self.lights = Bridge(ip).get_light_objects('id')
+		self.lights = Bridge(ip=ip, username=username).get_light_objects('id')
 
 		# To interface with lights through http
 		base_address = '/'.join(['http:/',
@@ -92,7 +92,7 @@ class LightManager:
 
 	def apply_state(self, state, transitiontime=4, brightness_coeff=1):
 		# state should be a dictionary {lightid: [x1, y1], ...}
-		# lightid may be integer or string (e.g. 3 or '3') # TODO this introduces problems on .xy and .brightness. c
+		# lightid may be integer or string (e.g. 3 or '3') # TODO this introduces problems on .xy and .brightness
 		#  													      currently, it has to be string.
 		# transitiontime is an integer in unit deciseconds.
 		for ID in state:
