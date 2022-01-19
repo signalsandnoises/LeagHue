@@ -9,10 +9,10 @@ import LightManager
 import GameState
 from json import loads
 
-## parameters
-#  TODO store these and load from config.txt
-ip = "10.0.0.52"
-active_IDs = [3,4,5]
+## parameters go here
+#  TODO store these and load from a config.txt file
+ip = "10.0.0.50"
+active_IDs = [4,5]
 username = "t9EuSmHFC2o7bTtt5Lyq5eUMKNU0otLLN4nHE9wO"
 
 # TODO awful python naming schemes why
@@ -29,14 +29,13 @@ i = 1
 ## Main loop
 while True:
 	try:
-		response = requests.get(league_address, verify=False)
+		response = requests.get(league_address, verify=False, timeout=3)
 	except:
 		# Game's not running yet.
 		print(str(i) + ": not running")
 		response = None
 		initialized = False
 		next_event_id = 0
-		sleep(2)
 		i += 1
 
 	if response is not None:  # Client's running.

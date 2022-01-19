@@ -31,6 +31,7 @@ class GameManager:
 		self.light_manager = light_manager
 		self.light_manager.apply_color(xy=light_manager.WHITE, transitiontime=10, brightness_coeff=0.3)
 
+		sleep(1)
 
 		# summonerName -> playerIndex
 		self.summonerName = json["activePlayer"]["summonerName"]
@@ -38,10 +39,7 @@ class GameManager:
 		while json["allPlayers"][playerIndex]["summonerName"] != self.summonerName:
 			playerIndex += 1
 			if playerIndex >= 10:
-				# TODO can i just delete this if-block?
-				print("Somehow, this game has eleven players..")
-				print("or none of the players match the current user.")
-				break
+				raise AttributeError("Player not found in API")
 
 		# playerIndex -> playerInfo
 		playerInfo = json["allPlayers"][playerIndex]
@@ -73,6 +71,7 @@ class GameManager:
 
 
 		# championID+skinID -> skinName
+		# TODO what if we can't pull the skins correctly here?? skin = skin[0] has thrown errors before.
 		championData = requests.get(data_dragon_url+"champion/"+championID+".json").json()
 		skins = championData["data"][championID]["skins"]
 		skin = [skin for skin in skins if skin['num'] == skinID]
@@ -141,7 +140,7 @@ class GameManager:
 					if acingTeam == self.team:
 						# Do the rainbow!
 						self.state_to_remember = self.light_manager.get_state()
-						self.light_manager.rainbow(brightness_coeff=0.1)
+						self.light_manager.rainbow(brightness_coeff=1, cycles=2)
 						self.lastColorChangeTime = currentTime
 				
 				self.lastEventID = freshEvents[-1]["EventID"]
