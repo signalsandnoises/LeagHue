@@ -44,24 +44,6 @@ def load_image(url) -> np.ndarray:
     return img
 
 
-# Input the channel values of a single RGB pixel (np 3-value array)
-# Get x-y-brightness channel values
-def rgb_to_xyb(rgb):
-    # convert to 0-1
-    rgb = rgb / 255
-    # gamma correction
-    rgb = [pow(c+0.055/1.055, 2.4) if c > 0.04045 else c / 12.92 for c in rgb]
-    # convert to XYZ
-    trans = np.array([[0.4124, 0.3576, 0.1805],
-                      [0.2126, 0.7152, 0.0722],
-                      [0.0193, 0.1192, 0.9505]])
-    XYZ = np.matmul(trans, rgb)
-    x = XYZ[0] / (sum(XYZ)+0.0000001)
-    y = XYZ[1] / (sum(XYZ)+0.0000001)
-    xyb = [x, y, 255*XYZ[1]]
-    return(xyb)
-
-
 # Given a color encoded in xyb, set a collection of lightIDs to that color
 def set_xyb(IDs, xyb):
     for ID in IDs:
@@ -75,7 +57,7 @@ def rgb_to_hex(rgb):
 
 ## Given a (X,Y,3) image, compute a (3,X*Y) ndarray of x-values, y-values, and b-values
 ## Good for use with matplotlib or position-agnostic sampling
-def rgb_to_xyb_new(rgb):
+def rgb_to_xyb_rows(rgb):
     ## Implemented using https://developers.meethue.com/develop/application-design-guidance/color-conversion-formulas-rgb-to-xy-and-back/#Color-rgb-to-xy
     # 1. convert RGB values to 0-1
     rgb = rgb / 255
@@ -99,36 +81,80 @@ def rgb_to_xyb_new(rgb):
     xyb = np.array([xySum[0]/(xySum[2]+0.0000001),
                     xySum[1]/(xySum[2]+0.0000001),
                     xySum[1]])
-
     # TODO do we need steps 5,6 or does the bridge take care of it?
-
     return(xyb)
 
-"""
-# Code to test the hex conversion of a single color
-R = 86
-G = 57
-B = 221
-bri = 100
-xyb = rgb_to_xyb(0.5*np.array([R, G, B]))
-print(xyb)
-set_xyb(active_IDs, [xyb[0], xyb[1], bri])
-time.sleep(2)
+# Given a (X,Y,3) RGB image, return a (X,Y,3) image in XYB format
+def rgb_to_xyb_img(rgb):
+    dim = np.shape(rgb)
+    xyb = rgb_to_xyb_rows(rgb)
+    return np.reshape(np.transpose(xyb), dim)
 
-xyb = rgb_to_xyb_new(np.array([[[R,G,B]]]))
-print(xyb)
-set_xyb(active_IDs, [xyb[0][0], xyb[1][0], bri])
-exit()
-"""
+
+
+def examine_color(R, G, B, bri=100) -> None:
+    """
+    Applies these colors to my hue lights at home.
+    For testing only.
+    Input: ints R, G, B in [0,255],
+           int brightness in [0,100]
+    """
+    xyb = rgb_to_xyb(0.5*np.array([R, G, B]))
+    print(xyb)
+    set_xyb(active_IDs, [xyb[0], xyb[1], bri])
+    time.sleep(2)
+
+    xyb = rgb_to_xyb_new(np.array([[[R,G,B]]]))
+    print(xyb)
+    set_xyb(active_IDs, [xyb[0][0], xyb[1][0], bri])
+
 
 #img = np.array([[[6*x+3*y, 8*x+4*y, 10*x+5*y] for x in range(3)] for y in range(3)])
-url = splash_url("Brand", 6)
+url = splash_url("Seraphine", 1)
 print(url)
 img = load_image(url)
 if img is None:
     raise ImportError("Unable to fetch splash art for this skin!")
 
+xyb = rgb_to_xyb_img(img)
 
+def remove_dark_pixels(rgb, threshold=0.8):
+    #xyb = rgb_to_xyb_img(rgb)
+    xyb = rgb
+
+    brightnesses = xyb[:,:,2]
+    pixels_to_wipe = brightnesses < threshold
+    pixel_coords = np.nonzero(pixels_to_wipe)
+    num_of_pixels_to_wipe = np.shape(pixel_coords)[1]
+
+    r0 = np.repeat(pixel_coords[0], 3)
+    r1 = np.repeat(pixel_coords[1], 3)
+    r2 = np.tile(np.array([0,1,2], dtype=np.int64), num_of_pixels_to_wipe)
+    coords = (r0, r1, r2)
+
+    rgb[coords] = 255
+    return(rgb)
+
+
+rgb = np.array([[[0.1,0.5,0.1],[0.3,0.2,0.9]],
+                  [[0.8,0.8,0.1],[0.8,0.8,0.1]],
+                  [[0.4,0.3,0.1],[0.8,0.8,0.9]]])
+
+#foo = remove_dark_pixels(rgb)
+#exit()
+
+
+#fig, axs = plt.subplots(ncols=2)
+
+plt.subplot(1,2,1)
+plt.imshow(img)
+plt.subplot(1,2,2)
+img_filtered = remove_dark_pixels(img, threshold=100)
+plt.imshow(img_filtered)
+plt.show()
+
+
+"""
 tick = time.time()
 ### old code to convert RGB to XY
 rgb_vals = np.reshape(img, (-1,3))
@@ -141,37 +167,4 @@ tick = time.time()
 xy_vals_new = rgb_to_xyb_new(img)
 tock = time.time()
 print(f"Second conversion to XY: f{tock - tick}")
-
-exit()
-
-print(f"Original Image:\n{img}")
-print(f"New conversion:\n{rgb_to_xyb_new(img)}")
-rgb_vals = np.reshape(img, (-1,3))
-xy_vals = [rgb_to_xyb(rgb)[0:2] for rgb in rgb_vals]
-print(f"Old conversion:\n{xy_vals}")
-
-
-
-def rgb_to_xyb(rgb):
-    # convert to 0-1
-    rgb = rgb / 255
-    # gamma correction
-    rgb = [pow(c+0.055/1.055, 2.4) if c > 0.04045 else c / 12.92 for c in rgb]
-    # convert to XYZ
-    trans = np.array([[0.4124, 0.3576, 0.1805],
-                      [0.2126, 0.7152, 0.0722],
-                      [0.0193, 0.1192, 0.9505]])
-    XYZ = np.matmul(trans, rgb)
-    x = XYZ[0] / (sum(XYZ)+0.0000001)
-    y = XYZ[1] / (sum(XYZ)+0.0000001)
-    xyb = [x, y, 255*XYZ[1]]
-    return(xyb)
-
-
-plt.imshow(img)
-plt.show()
-
-np.reshape(img, (3,-1))
-
-
-print(np.shape(img))
+"""
