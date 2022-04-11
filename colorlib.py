@@ -218,3 +218,64 @@ def hsv_img_to_xyb_img(hsv):
     pixels = rgb_to_xyb(pixels)
     xyb = unflatten_image(dim, pixels)
     return xyb
+
+def filter_channel(img, channel_index, channel_filter, blank=0):
+    """
+    channel: the index of a vector to filter on
+    filter: a function that inputs a channel vector and returns a boolean vector
+            e.g. lambda x: x < 0.8
+    range: the resulting pixel to insert. Must have shape=(3,1) (column vector in R^3).
+    """
+    img = np.ndarray.copy(img)  # don't want to modify the old img in-place and lose it.
+    dim, pixels = flatten_image(img)
+    marked_pixel_map = channel_filter(pixels[channel_index])
+    marked_pixel_cols = np.nonzero(marked_pixel_map)
+    num_of_marked_pixels = np.shape(marked_pixel_cols)[1]
+    #r0 = np.tile(np.array([0,1,2], dtype=np.int64), num_of_marked_pixels)
+    #r1 = np.repeat(marked_pixel_cols, 3)
+    r0 = np.repeat(channel_index, num_of_marked_pixels)
+    r1 = marked_pixel_cols
+    marked_pixel_coords = (r0, r1)
+    pixels[marked_pixel_coords] = blank
+    filtered_img = unflatten_image(dim, pixels)
+    return filtered_img
+
+def filter_pixels_by_channel(img, channel_index, channel_filter, blank=[0,0,0]):
+    """
+    Filters all three channels of a pixel based off the channel_filter.
+    Computationally equivalent to a single call.
+    """
+    img = np.ndarray.copy(img)  # don't want to modify the old img in-place and lose it.
+    dim, pixels = flatten_image(img)
+    marked_pixel_map = channel_filter(pixels[channel_index])
+    marked_pixel_cols = np.nonzero(marked_pixel_map)
+    num_of_marked_pixels = np.shape(marked_pixel_cols)[1]
+    r0 = np.tile(np.array([0,1,2], dtype=np.int64), num_of_marked_pixels)
+    r1 = np.repeat(marked_pixel_cols, 3)
+    marked_pixel_coords = (r0, r1)
+    objective = np.tile(np.array(blank, dtype=np.int64), num_of_marked_pixels)
+    pixels[marked_pixel_coords] = objective
+    filtered_img = unflatten_image(dim, pixels)
+    return filtered_img
+
+foo = np.array([[[6*x+3*y, 8*x+4*y, 10*x+5*y] for x in range(3)] for y in range(3)])
+bar = filter_pixels_by_channel(foo, 2, lambda x: x > 10, blank=[255,255,255])
+print(foo)
+print(bar)
+exit()
+"""
+    xyb = rgb_img_to_xyb_img(rgb)
+
+    brightnesses = xyb[:,:,2]
+    pixels_to_wipe = brightnesses < threshold
+    pixel_coords = np.nonzero(pixels_to_wipe)
+    num_of_pixels_to_wipe = np.shape(pixel_coords)[1]
+
+    r0 = np.repeat(pixel_coords[0], 3)
+    r1 = np.repeat(pixel_coords[1], 3)
+    r2 = np.tile(np.array([0,1,2], dtype=np.int64), num_of_pixels_to_wipe)
+    coords = (r0, r1, r2)
+
+    rgb[coords] = 255
+    return(rgb)
+    """
