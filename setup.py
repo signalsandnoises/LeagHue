@@ -9,14 +9,13 @@ from db import DB
 
 global config
 
-def throwError(msg):
+def throwError(msg):  # TODO add logging here
     print(msg)
     sys.exit()
 
 def connectToBridge():
     """Returns (address, bridge_id)"""
 
-    # Search for bridges
     print("Searching for bridges.. ", end="")
     try:
         res = requests.get("https://discovery.meethue.com")
@@ -27,6 +26,7 @@ def connectToBridge():
     bridges = res.json()
 
     # Figure out which bridge to configure with
+    # 3 cases based on number of available bridges
     if len(bridges) == 0:
         throwError("ERROR: No bridges found. Check that this device is on the same local connection as your Hue Bridge.")
     elif len(bridges) == 1:
@@ -48,7 +48,7 @@ def connectToBridge():
             if bridge_index >= len(bridges):
                 bridge_index = -1
 
-    # Configure to use that bridge
+    # Configure to use the selected bridge
     address = bridges[bridge_index]['internalipaddress']
     bridge_id = bridges[bridge_index]['id']
     config["Philips Hue"] = {'BridgeAddress': address}
@@ -61,13 +61,12 @@ def authenticateBridge(address, bridge_id):
     if key is None:
         print("Bridge not found in local database.\n"
               "You will need to register this application with your Hue Bridge.")
-
         device_name = "_".join(socket.gethostname().split())
+        request_url = f"http://{address}/api"
         request_body = {"devicetype":f"LeagHue#{device_name}", "generateclientkey":True}
-
         while key is None:
             input("Press the link button on your Hue Bridge, then hit Enter on this device:")
-            res = requests.post(url=f"http://{address}/api", json=request_body)
+            res = requests.post(url=request_url, json=request_body)
             if res.status_code != 200:
                 throwError("Error: Unable to communicate with Hue Bridge")
             reply = res.json()[0]
@@ -76,10 +75,8 @@ def authenticateBridge(address, bridge_id):
             elif 'success' in reply:
                 user = reply['success']['username']
                 key = reply['success']['clientkey']
-
         print("Key successfully generated!")
         db.insert_bridge_key(bridge_id, user, key)
-
 
     config["Philips Hue"]['User'] = user
     config["Philips Hue"]['Key'] = key
@@ -104,7 +101,6 @@ def selectLights(address, user, key):
         print(f"[{i}]: {light_name}")
 
     lights_to_add = set()
-    print(res.json())
     print("For each light you wish to include, enter its index.")
     print("If you add a light on accident, re-enter its index to remove it.")
     print("When the right lights have been selected, enter 'next'")
@@ -130,7 +126,9 @@ def selectLights(address, user, key):
             line = input(">> ")
             if line == "n":
                 next = False
-    config["Philips Hue"]["lights"] = ",".join([str(l) for l in lights_to_add])
+    light_ids = [light['id'] for light in [lights['data'][i] for i in lights_to_add]]
+
+    config["Philips Hue"]["lights"] = ",".join([light_id for light_id in light_ids])
     print("Adding these lights.")
 
 
@@ -162,4 +160,4 @@ def setup(debug=False):
 
 if __name__ == '__main__':
     config = configparser.ConfigParser()
-    setup(debug=True)  # TODO change this to False
+    setup(debug=False)
