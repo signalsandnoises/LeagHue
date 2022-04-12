@@ -101,13 +101,15 @@ def rgb_to_hsv(rgb):
     c_min_ind = np.argmin(rgb, axis=0)
     c_med_ind = 3 - c_max_ind - c_min_ind
     num_of_pixels = np.shape(rgb)[1]
-    column_ind = np.arange(num_of_pixels)
+    col_indices = np.arange(num_of_pixels)
 
-    c_max = rgb[(c_max_ind, column_ind)]
-    c_min = rgb[(c_min_ind, column_ind)]
-    c_med = rgb[(c_med_ind, column_ind)]
+    c_max = rgb[(c_max_ind, col_indices)]
+    c_min = rgb[(c_min_ind, col_indices)]
     delta = c_max - c_min
-    phi = c_med - c_min
+
+    c_one_after_max_ind = (c_max_ind + 1) % 3
+    c_two_after_max_ind = (c_max_ind + 2) % 3
+    phi = rgb[(c_one_after_max_ind, col_indices)] - rgb[(c_two_after_max_ind, col_indices)]
 
     H = np.empty(num_of_pixels)
     for i in range(num_of_pixels):
@@ -115,7 +117,7 @@ def rgb_to_hsv(rgb):
         if delta[i] == 0:
             kernel = 0
         elif c_max_ind[i] == 0:
-            kernel = phi[i] / delta[i] % 6
+            kernel = (phi[i] / delta[i]) % 6
         elif c_max_ind[i] == 1:
             kernel = phi[i] / delta[i] + 2
         elif c_max_ind[i] == 2:
@@ -135,8 +137,8 @@ def hsv_to_rgb(hsv):
     """
     # Implemented from https://developers.meethue.com/develop/application-design-guidance/color-conversion-formulas-rgb-to-xy-and-back/#hsv-to-rgb-color
     num_of_pixels = np.shape(hsv)[1]
-    s = hsv[1]/100
-    v = hsv[2]/100
+    s = hsv[1]
+    v = hsv[2]
     C = s*v
     X = C*(1-abs(((hsv[0]/60) % 2) - 1))
     m = v - C
@@ -160,7 +162,7 @@ def hsv_to_rgb(hsv):
     R = r + m
     G = g + m
     B = b + m
-    return np.row_stack((R,G,B))
+    return (255*np.row_stack((R,G,B))).astype(int)
 
 
 def rgb_img_to_xyb_img(rgb):
@@ -258,11 +260,9 @@ def filter_pixels_by_channel(img, channel_index, channel_filter, blank=[0,0,0]):
     filtered_img = unflatten_image(dim, pixels)
     return filtered_img
 
-foo = np.array([[[6*x+3*y, 8*x+4*y, 10*x+5*y] for x in range(3)] for y in range(3)])
-bar = filter_pixels_by_channel(foo, 2, lambda x: x > 10, blank=[255,255,255])
-print(foo)
-print(bar)
-exit()
+#foo = np.array([[[6*x+3*y, 8*x+4*y, 10*x+5*y] for x in range(3)] for y in range(3)])
+#bar = filter_pixels_by_channel(foo, 2, lambda x: x > 10, blank=[255,255,255])
+
 """
     xyb = rgb_img_to_xyb_img(rgb)
 
