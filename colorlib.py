@@ -20,9 +20,9 @@ import numpy as np
 
 
 # TODO remove this?
-# Input 0-255 RGB. Output hexcode
+# Input a single 0-255 RGB pixel. Output hexcode
 def rgb_to_hex(rgb):
-    return '#' + ''.join([hex(val)[2:] for val in rgb])
+    return '#{:02X}{:02X}{:02X}'.format(*rgb)
 
 def flatten_image(img) -> (tuple, np.array):
     """
@@ -133,7 +133,7 @@ def rgb_to_hsv(rgb):
 
 def hsv_to_rgb(hsv):
     """
-    Convert a (3,X*Y) array of XYB pixels to RGB pixels
+    Convert a (3,X*Y) array of HSV pixels to RGB pixels
     """
     # Implemented from https://developers.meethue.com/develop/application-design-guidance/color-conversion-formulas-rgb-to-xy-and-back/#hsv-to-rgb-color
     num_of_pixels = np.shape(hsv)[1]
@@ -230,7 +230,7 @@ def filter_channel(img, channel_index, channel_filter, blank=0):
     """
     img = np.ndarray.copy(img)  # don't want to modify the old img in-place and lose it.
     dim, pixels = flatten_image(img)
-    marked_pixel_map = channel_filter(pixels[channel_index])
+    marked_pixel_map = np.invert(channel_filter(pixels[channel_index]))
     marked_pixel_cols = np.nonzero(marked_pixel_map)
     num_of_marked_pixels = np.shape(marked_pixel_cols)[1]
     #r0 = np.tile(np.array([0,1,2], dtype=np.int64), num_of_marked_pixels)
@@ -249,13 +249,13 @@ def filter_pixels_by_channel(img, channel_index, channel_filter, blank=[0,0,0]):
     """
     img = np.ndarray.copy(img)  # don't want to modify the old img in-place and lose it.
     dim, pixels = flatten_image(img)
-    marked_pixel_map = channel_filter(pixels[channel_index])
+    marked_pixel_map = np.invert(channel_filter(pixels[channel_index]))
     marked_pixel_cols = np.nonzero(marked_pixel_map)
     num_of_marked_pixels = np.shape(marked_pixel_cols)[1]
     r0 = np.tile(np.array([0,1,2], dtype=np.int64), num_of_marked_pixels)
     r1 = np.repeat(marked_pixel_cols, 3)
     marked_pixel_coords = (r0, r1)
-    objective = np.tile(np.array(blank, dtype=np.int64), num_of_marked_pixels)
+    objective = np.tile(np.array(blank), num_of_marked_pixels)
     pixels[marked_pixel_coords] = objective
     filtered_img = unflatten_image(dim, pixels)
     return filtered_img
