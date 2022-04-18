@@ -1,0 +1,26 @@
+Data flow:
+    From https://127.0.0.1:2999/liveclientdata/allgamedata/
+        playerInfo = data["allPlayers"][playerID]
+        skinID = playerInfo[skinID] %>% str()
+        championName = playerInfo[championName]
+    From https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-summary.json
+        Find the object in this array whose ["name"] == championName.
+        championID = ["id"]
+        championAlias = ["alias"]
+
+    From https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-chroma-images/{championID}
+        If skinID == 0:
+
+        Try GET splash art as usual, using skinID.
+        If it 404's then it's a chroma.
+            Try GET f"{/championID}_{int(skinID): ___}.png"
+            If it 404's then it's something mysterious.
+                Log it!
+
+
+
+
+Goals:
+    Seraphine_3 should have a nice spread of colors.
+    Senna_0 should not select red.
+
