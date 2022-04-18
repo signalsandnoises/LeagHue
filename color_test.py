@@ -74,7 +74,7 @@ def examine_color(R, G, B, bri=100) -> None:
 
 
 champion = "Corki"
-skinID = 0
+skinID = 18
 url = splash_url(champion, skinID)
 threshold=0.3
 print(url)
