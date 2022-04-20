@@ -42,7 +42,7 @@ def unflatten_image(dim, pixels):
     """
     return np.reshape(np.transpose(pixels), dim)
 
-
+# TODO have the four core conversion functions work on np.copy(img)
 def rgb_to_xyb(rgb):
     """Convert a (3,X*Y) array of RGB pixels to XYB pixels"""
     # Implemented using https://developers.meethue.com/develop/application-design-guidance/color-conversion-formulas-rgb-to-xy-and-back/#Color-rgb-to-xy
@@ -72,23 +72,25 @@ def rgb_to_xyb(rgb):
 
 def xyb_to_rgb(xyb):
     """Convert a (3,X*Y) array of XYB pixels to RGB pixels"""
-    # Implemented using https://developers.meethue.com/develop/application-design-guidance/color-conversion-formulas-rgb-to-xy-and-back/#Color-rgb-to-xy
+    # Implemented using https://developers.meethue.com/develop/application-design-guidance/color-conversion-formulas-rgb-to-xy-and-back/#xy-to-rgb-color
     # TODO are we gonna skip steps 1 and 2?
     x = xyb[0]
     y = xyb[1]
     z = 1 - x - y
     Y = xyb[2]
-    X = Y / y * x
-    Z = Y / y * z
+    X = (Y / y) * x
+    Z = (Y / y) * z
+    XYZ = np.row_stack((X,Y,Z))
 
-    conversion_matrix = np.array([[1.656492, 0.354851, 0.255038],
+    conversion_matrix = np.array([[1.656492, -0.354851, -0.255038],
                                   [-0.707196, 1.655397, 0.036152],
-                                  [0.051713, 0.121364, 1.011530]])
-    rgb = np.matmul(conversion_matrix, xyb)
+                                  [0.051713, -0.121364, 1.011530]])
+    rgb = np.matmul(conversion_matrix, XYZ)
 
-    reverse_gamma_correction = np.vectorize(lambda c: 12.92 * c if c <= 0.0031308 else 1.055 * (c**(1/2.4)) - 0.055)
+    # TODO why did I remove this reverse gamma correction????
+    reverse_gamma_correction = np.vectorize(lambda c: 12.92 * c if c <= 0.0031308 else (1.055 * (c**(1/2.4))) - 0.055)
     rgb = reverse_gamma_correction(rgb)
-    return rgb
+    return 255*rgb
 
 
 def rgb_to_hsv(rgb):
@@ -221,7 +223,7 @@ def hsv_img_to_xyb_img(hsv):
     xyb = unflatten_image(dim, pixels)
     return xyb
 
-def filter_channel(img, channel_index, channel_filter, blank=0):
+def mask_channel(img, channel_index, channel_filter, blank=0):
     """
     channel: the index of a vector to filter on
     filter: a function that inputs a channel vector and returns a boolean vector
@@ -242,7 +244,7 @@ def filter_channel(img, channel_index, channel_filter, blank=0):
     filtered_img = unflatten_image(dim, pixels)
     return filtered_img
 
-def filter_pixels_by_channel(img, channel_index, channel_filter, blank=[0,0,0]):
+def mask_pixels_by_channel(img, channel_index, channel_filter, blank=[0, 0, 0]):
     """
     Filters all three channels of a pixel based off the channel_filter.
     Computationally equivalent to a single call.
