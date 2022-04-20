@@ -83,53 +83,46 @@ def authenticateBridge(address, bridge_id):
     print("Bridge key found and configured.")
     return (user, key)
 
-def selectLights(address, user, key):
+def selectGroup(address, user, key):
     request_header = {"hue-application-key": user}
-    request_url = f"https://{address}/clip/v2/resource/light"
+    request_url = f"https://{address}/clip/v2/resource"
     try:
-        res = requests.get(url=request_url, headers=request_header,
+        zone_res = requests.get(url=f"{request_url}/zone", headers=request_header,
                            verify=False)
-                           #cert="cert.pem")  # TODO figure out SSL and clean this try/except
-        if res.status_code != 200:
+        # cert="cert.pem")  # TODO figure out SSL and clean this try/except
+        room_res = requests.get(url=f"{request_url}/room", headers=request_header,
+                                verify=False)
+        if zone_res.status_code != 200 or room_res.status_code != 200:
             raise BaseException
     except:
-        throwError("ERROR: Unable to get lights from Bridge.")
-    lights = res.json()
-    num_lights = len(lights['data'])
-    light_names = [lights['data'][i]['metadata']['name'] for i in range(num_lights)]
-    for i, light_name in enumerate(light_names):
-        print(f"[{i}]: {light_name}")
+        throwError("ERROR: Unable to get rooms and zones from Bridge.")
+    zones = zone_res.json()["data"]
+    rooms = room_res.json()["data"]
 
-    lights_to_add = set()
-    print("For each light you wish to include, enter its index.")
-    print("If you add a light on accident, re-enter its index to remove it.")
-    print("When the right lights have been selected, enter 'next'")
-    next = False
-    while not next:
-        line = input(f"Currently selected: {lights_to_add}\n>> ")
-        next = line == "next"
-        if not next:
-            try:
-                line = int(line)
-                if line >= num_lights or line < 0: raise ValueError
-                if line not in lights_to_add:
-                    lights_to_add.add(line)
-                else:
-                    lights_to_add.remove(line)
-            except ValueError:
-                print("ERROR: Invalid light index. Try a valid number.")
+    groups = zones + rooms
 
-        if next:
-            print(f"Are you sure you wish to continue with the following lights? [Y/n]")
-            for i in lights_to_add:
-                print(f"[{i}]: {light_names[i]}")
-            line = input(">> ")
-            if line == "n":
-                next = False
-    light_ids = [light['id'] for light in [lights['data'][i] for i in lights_to_add]]
+    print(f"{len(groups)} groups found:")
+    for i, group in enumerate(groups):
+        group_index = f"[{i+1}]"
+        print(f"{group_index: >5}: {group['metadata']['name']}")
 
-    config["Philips Hue"]["lights"] = ",".join([light_id for light_id in light_ids])
-    print("Adding these lights.")
+    print("Enter the index of the room or zone to control:")
+    group_to_select = -1
+    while group_to_select == -1:
+        response = input(">>")
+        try:
+            response = int(response)
+            if response <= 0 or response > len(groups):
+                raise ValueError
+            group_to_select = response
+        except:
+            print("ERROR: Invalid group index. Try a valid number.")
+
+    group = groups[group_to_select - 1]
+    config["Philips Hue"]['GroupType'] = group['type']
+    config["Philips Hue"]['GroupID'] = group['id']
+
+    print(f"Configuring to control {group['metadata']['name']}")
 
 
 def setup(debug=False):
@@ -148,9 +141,14 @@ def setup(debug=False):
     user, key = authenticateBridge(address, bridge_id)  # authentication stuff
     print("STEP TWO COMPLETE.")
 
+    print("\nSTEP THREE: Select Light Zone")
+    selectGroup(address, user, key)
+    print("STEP THREE COMPLETE.")
+    """
     print("\nSTEP THREE: Select Lights")
     selectLights(address, user, key)  # configuration stuff
     print("STEP THREE COMPLETE.")
+    """
 
     with open('config.ini', 'w') as configfile:
         config.write(configfile)
