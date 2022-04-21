@@ -51,7 +51,7 @@ def connectToBridge():
     # Configure to use the selected bridge
     address = bridges[bridge_index]['internalipaddress']
     bridge_id = bridges[bridge_index]['id']
-    config["Philips Hue"] = {'BridgeAddress': address}
+    config["Philips Hue"] = {'bridge_address': address}
     print(f"Configured to access Hue bridge {bridge_index+1} at {address}")
     return (address, bridge_id)
 
@@ -78,8 +78,8 @@ def authenticateBridge(address, bridge_id):
         print("Key successfully generated!")
         db.insert_bridge_key(bridge_id, user, key)
 
-    config["Philips Hue"]['User'] = user
-    config["Philips Hue"]['Key'] = key
+    config["Philips Hue"]['user'] = user
+    config["Philips Hue"]['key'] = key
     print("Bridge key found and configured.")
     return (user, key)
 
@@ -119,8 +119,9 @@ def selectGroup(address, user, key):
             print("ERROR: Invalid group index. Try a valid number.")
 
     group = groups[group_to_select - 1]
-    config["Philips Hue"]['GroupType'] = group['type']
-    config["Philips Hue"]['GroupID'] = group['id']
+    config["Philips Hue"]['group_type'] = group['type']
+    config["Philips Hue"]['group_id'] = group['id']
+    config["Philips Hue"]['group_name'] = group['metadata']['name']
 
     print(f"Configuring to control {group['metadata']['name']}")
 
