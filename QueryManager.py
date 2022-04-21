@@ -29,6 +29,13 @@ class QueryManager:
 
         self.light_ids = [child['rid'] for child in group['children']]
 
+    def set_color(self, x: float = 0.31271, y: float = 0.32902):
+        json = {
+            "color": self._color(x, y)
+        }
+        for light_id in self.light_ids:
+            self.put_resource(f"/light/{light_id}", json=json)
+
     def post_scene(self, sceneName: str, x: list, y: list) -> str:
         """
         Truncates the parameters to meet the following conditions:
@@ -65,9 +72,9 @@ class QueryManager:
                             "on": True
                         },
                         "color": self._color(base_x[i], base_y[i]),
-                        "dimming": {  # TODO do we need "dimming"?
-                            "brightness": 100
-                        },
+                        # "dimming": {  # TODO do we need "dimming"?
+                        #     "brightness": 100
+                        # },
                         "dynamics": {  # TODO is this useful?
                             "duration": 400
                         }

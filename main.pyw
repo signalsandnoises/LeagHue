@@ -1,35 +1,62 @@
-# On first run, you will have to press your Philips Bridge
-# button and start the script within 30 seconds (unless
-# you've used phue.Bridge before).
+# A development script to experiment on pulling Hue colors from splash art.
+# This file uses the deprecated phue library, which uses the deprecated PHue art.
 
-from time import sleep
 import requests
+import random
+import numpy as np
+from PIL import Image
+from io import BytesIO
 import urllib3
-import LightManager
-import GameState
-from json import loads
+from configparser import ConfigParser
+from colorlib import *
+from QueryManager import QueryManager
+import model
 
-## parameters go here
-#  TODO store these and load from a config.txt file
-ip = "10.0.0.50"
-active_IDs = [4,5]
-username = "t9EuSmHFC2o7bTtt5Lyq5eUMKNU0otLLN4nHE9wO"
+# League constants
+patch = requests.get("https://ddragon.leagueoflegends.com/api/versions.json").json()[0]
+data_dragon_url = f"https://ddragon.leagueoflegends.com/cdn/{patch}/data/en_US/"
+# Hue constants
+config = ConfigParser()
+config.read('config.ini')
+address = config["Philips Hue"]['bridge_address']
+user = config["Philips Hue"]['user']
+key = config["Philips Hue"]['key']
+groupID = config["Philips Hue"]['group_id']
+groupType = config["Philips Hue"]['group_type']
 
-# TODO awful python naming schemes why
-light_manager = LightManager.LightManager(active_IDs, ip, username)
+gamedata_url = "https://127.0.0.1:2999/liveclientdata/allgamedata/"
+base_request_url = f"https://{address}/clip/v2/resource"
 
-## The League client is https only with an insecure cert. 
-#  We'll just.. suppress it for now. It's all on localhost 
-#  anyway, who's going to invade us?  TODO
-urllib3.disable_warnings()
+# From a championID and skinID, get the url to query its splash art.
+# If none is given, generate the url for a random skin's splash.
+def splash_url(championID=None, skinID=None) -> str:
+    if championID is None or skinID is None:
+        allChampionData = requests.get(data_dragon_url+"champion.json").json()["data"]
+        randomChampionID = random.choice(list(allChampionData.keys()))
+        randomChampionData = requests.get(f"{data_dragon_url}champion/{randomChampionID}.json").json()
+        numberOfSkins = len(randomChampionData["data"][randomChampionID]["skins"])
+        randomSkinID = random.randint(0, numberOfSkins)
+        championID = randomChampionID
+        skinID = randomSkinID
+    return f"https://ddragon.leagueoflegends.com/cdn/img/champion/loading/{championID}_{skinID}.jpg"
 
-league_address = "https://127.0.0.1:2999/liveclientdata/allgamedata/"
+
+# Fetch from url and return image as np array.
+# Returns None if no image is found.
+def load_image(url) -> np.ndarray:
+    res = requests.get(url)
+    if res.status_code != 200:
+        return None
+    img = np.array(Image.open(BytesIO(res.content)))
+    return img
+
+queryman = QueryManager(config)
 
 i = 1
 ## Main loop
 while True:
 	try:
-		response = requests.get(league_address, verify=False, timeout=3)
+		response = requests.get(gamedata_url, verify=False, timeout=3)
 	except:
 		# Game's not running yet.
 		print(str(i) + ": not running")
@@ -53,36 +80,27 @@ while True:
 				light_manager.apply_state(loads(intergame_state))
 		sleep(0.05) # We poll at 20 Hz if the HTTP connection works but the game hasn't started.
 
-			
 
 
+## The League client is https only with an insecure cert.
+#  We'll just.. suppress it for now. It's all on localhost
+#  anyway, who's going to invade us?  TODO
+urllib3.disable_warnings()
 
-	
-''' This app will be structured so that it queries the League API every second when inactive.
-When it gets a successful query, we start querying every 0.1 seconds.
-
-Events:
-	death: (de-saturate, then reset upon respawn)
-	ace: (rainbow)
-	victory: turn blue, then reset after 10s
-	defeat: turn red, then reset after 10s
-
-
-On initialization, we create a LightManager which manages the lighting environment.
-
-In the main-loop, we query to detect whether the game has started, once per second. Once it has,
-we construct GameState.
-
-The GameState is initialized with a champion and their skin. It tracks all in-game events.
-
-
-Create a 
-
-'''
+league_address = "https://127.0.0.1:2999/liveclientdata/allgamedata/"
 
 
 
 
-## League API address
-#response = requests.get("​https://127.0.0.1:2999/liveclientdata/allgamedata/")
-#print(response.json())
+
+
+
+
+
+
+
+scene_name = f"{champion}_{skinID}"
+scene_id = model.img_to_scene(img, scene_name, queryman=queryman)
+queryman.recall_scene(scene_id)
+
+queryman.delete_scene(scene_id)
