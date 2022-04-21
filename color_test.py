@@ -8,23 +8,33 @@ from PIL import Image
 from io import BytesIO
 from matplotlib import pyplot as plt
 from matplotlib.patches import Rectangle
-from math import pow
+from configparser import ConfigParser
 from colorlib import *
-from sklearn.cluster import MiniBatchKMeans, KMeans
-import time
+from sklearn.cluster import KMeans
+from QueryManager import QueryManager
+
 
 # League constants
 patch = requests.get("https://ddragon.leagueoflegends.com/api/versions.json").json()[0]
 data_dragon_url = f"https://ddragon.leagueoflegends.com/cdn/{patch}/data/en_US/"
 # Hue constants
-ip = "10.0.0.50"
-active_IDs = [3,4,5]
-username = "t9EuSmHFC2o7bTtt5Lyq5eUMKNU0otLLN4nHE9wO"
-#lights = Bridge(ip=ip, username=username).get_light_objects('id')
+config = ConfigParser()
+config.read('config.ini')
+address = config["Philips Hue"]['bridge_address']
+user = config["Philips Hue"]['user']
+key = config["Philips Hue"]['key']
+groupID = config["Philips Hue"]['group_id']
+groupType = config["Philips Hue"]['group_type']
 
-## SECTION ZERO: FETCHING AND PRE-PROCESSING AN IMAGE
-champion = "Caitlyn"
-skinID = 0
+base_request_url = f"https://{address}/clip/v2/resource"
+
+
+
+##
+## SECTION ONE: FETCHING AN IMAGE
+##
+champion = "Seraphine"
+skinID = 3
 
 # From a championID and skinID, get the url to query its splash art.
 # If none is given, generate the url for a random skin's splash.
@@ -55,6 +65,9 @@ img = load_image(url)
 if img is None:
     raise ImportError("Unable to fetch splash art for this skin!")
 
+##
+## SECTION TWO: PRE-PROCESSING THE IMAGE
+##
 blank_hsv = [0,0,0.95]
 sat_threshold = 0.3
 bri_threshold = 0.5
@@ -82,17 +95,11 @@ pixels_rgb = hsv_to_rgb(pixels_hsv)
 pixels_xyb = rgb_to_xyb(hsv_to_rgb(np.copy(pixels_hsv)))
 pixels_xyb_tidy = np.transpose(pixels_xyb)
 
-## Clustering time!
+##
+## SECTION THREE: SELECTING A COLOR PALETTE
+##
 n_clusters = 9
-## Old pipeline
-#kmeans = KMeans(n_clusters=n_clusters, random_state=4004).fit(pixels_xyb_tidy[:,(0,1)])
-#color_centers_xy = np.transpose(kmeans.cluster_centers_[:,(0,1)])
-#color_centers_xyb = np.row_stack((color_centers_xy, np.array([[0.75]*n_clusters])))
-#color_centers_rgb = xyb_to_rgb(np.copy(color_centers_xyb))
-#color_centers_rgb = np.minimum(color_centers_rgb, np.full(np.shape(color_centers_rgb), 255)).astype(int) # TODO wtf is with xyb2rgb?
-#color_centers_hex = [rgb_to_hex(color) for color in np.transpose(color_centers_rgb).astype(int)]
-#color_centers_hsv = rgb_to_hsv(np.copy(color_centers_rgb))
-# New pipeline
+
 kmeans = KMeans(n_clusters=n_clusters, random_state=4004).fit(X=pixels_xyb_tidy,
                                                               sample_weight=np.exp(pixels_hsv[1]))
 color_centers_xyb = np.transpose(kmeans.cluster_centers_)
@@ -116,7 +123,7 @@ color_centers_hex_flat = [rgb_to_hex(color) for color in np.transpose(color_cent
 color_centers_xyb_flat = rgb_to_xyb(np.copy(color_centers_rgb_flat))
 
 
-## SECTION TWO: PLOTTING
+## SECTION FOUR: PLOTTING EVERYTHING SO FAR
 plt.subplot(1,5,1)
 plt.title(f"{champion}, skin #{skinID}")
 plt.imshow(img)
@@ -167,6 +174,26 @@ for i in range(n_clusters):
 
 
 plt.subplots_adjust(left=0.05, right=0.95, top=1, bottom=0)
+
+
+##
+## SECTION FIVE: CREATING AND APPLYING THE SCENE
+##
+queryman = QueryManager(config)
+scene_id = queryman.post_scene(sceneName=f"{champion}_{skinID}",
+                               x=color_centers_xyb_flat[0],
+                               y=color_centers_xyb_flat[1])
+queryman.recall_scene(scene_id)
+
 plt.show()
+queryman.delete_scene(scene_id)
+
+# TODO delete the scene lol
+
+
+
+
+
+
 
 
