@@ -1,5 +1,5 @@
 import requests
-from time import sleep
+from time import sleep, time
 from typing import Callable
 from configparser import ConfigParser
 import colorlib
@@ -74,7 +74,7 @@ class QueryManager:
             self.put_resource(f"/light/{light_id}", json=json, **kwargs)
 
 
-    def rainbow(self, recall_scene_id: str, time_per_cycle = 5, cycles = 5):
+    def rainbow(self, recall_scene_id: str, time_per_cycle = 6, cycles = 3):
         """
         Does a rainbow on each of the lights, then recalls a scene dynamically.
         return_to: the id of a scene to return to.
@@ -97,9 +97,10 @@ class QueryManager:
 
 
         class Device(threading.Thread):
-            def __init__(self, queryman, light_id):
+            def __init__(self, queryman, light_id, barrier):
                 self.queryman = queryman
                 self.light_id = light_id
+                self.barrier = barrier
                 threading.Thread.__init__(self)
 
             def run(self):
@@ -109,14 +110,30 @@ class QueryManager:
                                        x=hex_gamut[corner][0],
                                        y=hex_gamut[corner][1],
                                        duration_ms=request_duration_ms)
-                        sleep(request_duration_s)
+                        self.barrier.wait()
 
-        threads = [Device(self, light_id) for light_id in self.light_ids]
+        barrier = threading.Barrier(4, timeout=10)
+        threads = [Device(self, light_id, barrier) for light_id in self.light_ids]
+        start = time()
         for thread in threads:
             thread.start()
+
+
+        for i in range(cycles*6):
+            tick = time()
+            sleep(request_duration_s)
+            barrier.wait()
+            tock = time()
+            barrier.reset()
+            print(tock - tick)
+
         for thread in threads:
             thread.join()
-        exit()
+        stop = time()
+        print(stop - start)
+
+
+        return
 
 
         for cycle in range(cycles):
@@ -310,8 +327,8 @@ if __name__ == "__main__":
     while True:
         print(hsv_gamut[0][i])
         queryman.set_color(x=x[i], y=y[i],
-        duration_ms=1000, timeout=0.11)
-        sleep(0.2)
+        duration_ms=1000)#, timeout=0.11)
+        #sleep(0.2)
         i = (i + 1) % np.shape(hsv_gamut)[1]
 
     exit()
