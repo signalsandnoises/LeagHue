@@ -65,7 +65,7 @@ class QueryManager:
         json = {
             "color": self._color(x, y),
             "dynamics": {
-                "duration": duration_ms
+                "duration": int(duration_ms)
             }
         }
         if brightness is not None:
@@ -74,7 +74,7 @@ class QueryManager:
             self.put_resource(f"/light/{light_id}", json=json, **kwargs)
 
 
-    def rainbow(self, recall_scene_id: str, time_per_cycle = 6, cycles = 3):
+    def rainbow(self, recall_scene_id: str, time_per_cycle = 12, cycles = 1):
         """
         Does a rainbow on each of the lights, then recalls a scene dynamically.
         return_to: the id of a scene to return to.
@@ -84,16 +84,35 @@ class QueryManager:
         gamut = [[0.6915, 0.3038],
                  [0.17, 0.7],
                  [0.1532, 0.0475]]
+
         hex_gamut = [[0.6915, 0.3038],
                      [0.4308, 0.5019],
                      [0.17, 0.7],
                      [0.1616, 0.3737],
                      [0.1616, 0.1],
                      [0.42235, 0.17565]]
-        # self.set_color(x=gamut[0][0],
-        #                y=gamut[0][1],
-        #                duration_ms=400)
-        # sleep(5)
+
+
+        #                         R    Y    YG   BG   C    B    I    V    M
+        hsv_gamut = np.array([[   0,  36,  72, 148, 180, 200, 252, 288, 324],
+                              [   1,   1,   1,   1,   1, 0.8, 0.5, 0.8, 0.8],
+                              [   1,   1,   1,   1,   1,   1,   1,   1,   1]])
+        transition_coeffs =   [   1,   1,   1,   1,   1,   1,   1,   1,   1]
+
+        # RGB is 0, 135, 257
+        hsv_gamut = np.array([[   0,  125,  200, 300, 0],
+                              [   1,   1,    0.8, 0.5, 0.9],
+                              [   1,   1,    1,   1,   1]])
+        transition_coeffs = np.array(
+                              [   1,   3,   2.5,   2,   2])
+        transition_coeffs = transition_coeffs / np.mean(transition_coeffs)
+
+        print(transition_coeffs)
+        rgb_gamut = colorlib.hsv_to_rgb(hsv_gamut)
+        xy_gamut = colorlib.rgb_to_xyb(rgb_gamut)
+        x = xy_gamut[0]
+        y = xy_gamut[1]
+        n_points = len(x)
 
 
         class Device(threading.Thread):
@@ -105,53 +124,36 @@ class QueryManager:
 
             def run(self):
                 for cycle in range(cycles):
-                    for corner in range(6):
+                    for point in range(n_points):
                         self.queryman.set_color(self.light_id,
-                                       x=hex_gamut[corner][0],
-                                       y=hex_gamut[corner][1],
-                                       duration_ms=request_duration_ms)
+                                                x=x[point],
+                                                y=y[point],
+                                                duration_ms=request_duration_ms*transition_coeffs[point])
                         self.barrier.wait()
 
-        barrier = threading.Barrier(4, timeout=10)
+        barrier = threading.Barrier(1 + len(self.light_ids), timeout=10)
         threads = [Device(self, light_id, barrier) for light_id in self.light_ids]
-        start = time()
         for thread in threads:
             thread.start()
 
-
-        for i in range(cycles*6):
-            tick = time()
-            sleep(request_duration_s)
-            barrier.wait()
-            tock = time()
-            barrier.reset()
-            print(tock - tick)
+        start = time()
+        for cycle in range(cycles):
+            for point in range(n_points):
+                tick = time()
+                sleep(request_duration_s*transition_coeffs[point])
+                barrier.wait()
+                tock = time()
+                barrier.reset()
+                print(tock - tick)
 
         for thread in threads:
             thread.join()
         stop = time()
+        print("@"*10)
         print(stop - start)
 
-
-        return
-
-
-        for cycle in range(cycles):
-            for corner in range(6):
-                self.set_color(x=hex_gamut[corner][0],
-                               y=hex_gamut[corner][1],
-                               duration_ms=request_duration_ms)
-                sleep(2*request_duration_s)
-
-        # for cycle in range(cycles):
-        #     for corner in range(3):
-        #         self.set_color(x=gamut[corner][0],
-        #                        y=gamut[corner][1],
-        #                        duration_ms=request_duration_ms)
-        #
-        #         sleep(request_duration_s)
-
         self.recall_dynamic_scene(recall_scene_id)
+
 
     def post_scene(self, sceneName: str, x: list, y: list) -> str:
         """
@@ -296,7 +298,6 @@ if __name__ == "__main__":
     # For rainbow()
     recall_scene_id = "d77ccf4c-93a5-4765-ad09-eeb61b14e315"
     queryman.rainbow(recall_scene_id=recall_scene_id)
-    queryman.recall_dynamic_scene(recall_scene_id)
     exit()
 
 
@@ -318,6 +319,7 @@ if __name__ == "__main__":
     hsv_gamut[1,(6,7)] = 0.6
     hsv_gamut[0][6] = 200
     print(hsv_gamut)
+    exit()
     rgb_gamut = colorlib.hsv_to_rgb(hsv_gamut)
     xy_gamut = colorlib.rgb_to_xyb(rgb_gamut)
     x = xy_gamut[0]
@@ -326,9 +328,12 @@ if __name__ == "__main__":
     i = 0
     while True:
         print(hsv_gamut[0][i])
+        tick = time()
         queryman.set_color(x=x[i], y=y[i],
-        duration_ms=1000)#, timeout=0.11)
-        #sleep(0.2)
+        duration_ms=400)#, timeout=0.11)
+
+        tock = time()
+        print(tock - tick)
         i = (i + 1) % np.shape(hsv_gamut)[1]
 
     exit()
