@@ -79,8 +79,6 @@ class QueryManager:
         Does a rainbow on each of the lights, then recalls a scene dynamically.
         return_to: the id of a scene to return to.
         """
-        request_duration_s = time_per_cycle / 6
-        request_duration_ms = int(request_duration_s * 1000)
         gamut = [[0.6915, 0.3038],
                  [0.17, 0.7],
                  [0.1532, 0.0475]]
@@ -107,13 +105,15 @@ class QueryManager:
                               [   1,   3,   2.5,   2,   2])
         transition_coeffs = transition_coeffs / np.mean(transition_coeffs)
 
-        print(transition_coeffs)
+
         rgb_gamut = colorlib.hsv_to_rgb(hsv_gamut)
         xy_gamut = colorlib.rgb_to_xyb(rgb_gamut)
         x = xy_gamut[0]
         y = xy_gamut[1]
         n_points = len(x)
 
+        request_duration_s = time_per_cycle / n_points
+        request_duration_ms = int(request_duration_s * 1000)
 
         class Device(threading.Thread):
             def __init__(self, queryman, light_id, barrier):
