@@ -5,22 +5,24 @@ from json import loads as str2json
 import requests
 import db_manager
 from time import sleep
-
+from QueryManager import QueryManager
+import numpy as np
+from PIL import Image
+from io import BytesIO
+import model
 
 class GameManager:
 
-	patch = requests.get("https://ddragon.leagueoflegends.com/api/versions.json").json()[0]
 	league_address = "https://127.0.0.1:2999/liveclientdata/allgamedata/"
-	time_buffer = 10  # minimum allowable number of seconds between end-game and any previous color changes
-					  # for accurately storing champion color.
 
-	def __init__(self, light_manager, json):
+	# TODO change params
+	def __init__(self, queryman: QueryManager, json):
 		'''
 		Game has begun, first event has occurred.
 		Goal: get the skin info and change the color
 		Process:
-			activePlayer summonerName -> allPlayers playerindex
-			playerIndex -> playerInfo -> championName+skinID
+			activePlayer[summonerName] -> allPlayers[playerindex]
+			playerIndex -> playerInfo -> championName, skinID
 			championName -> championID 
 			championID+skinID -> skinName
 		Then we can set the color.
@@ -28,10 +30,9 @@ class GameManager:
 		self.lastEventID = 0
 		self.lastColorChangeTime = 0
 
-		self.light_manager = light_manager
-		self.light_manager.apply_color(xy=light_manager.WHITE, transitiontime=10, brightness_coeff=0.3)
+		states = queryman.get_light_states()
 
-		sleep(1)
+		queryman.set_color()  # white
 
 		# summonerName -> playerIndex
 		self.summonerName = json["activePlayer"]["summonerName"]
@@ -44,56 +45,55 @@ class GameManager:
 		# playerIndex -> playerInfo
 		playerInfo = json["allPlayers"][playerIndex]
 
-		# playerInfo -> stuff
+		# playerInfo -> various stuff
 		championName = playerInfo["championName"]
-		skinID = playerInfo["skinID"]
+		skinID = int(playerInfo["skinID"])
 		self.team = playerInfo["team"]
 
-		# championName -> championID
-		
-		# TODO this needs to be auto-loaded somehow according to the latest patch
-		# TODO can region be configured?	
-		data_dragon_url = "https://ddragon.leagueoflegends.com/cdn/{}/data/en_US/".format(self.patch)
-		allChampionData = requests.get(data_dragon_url+"champion.json").json()["data"]
-		
-		championID = None
-		for key in allChampionData:
-			# keys are championIDs
-			# vals are attributes including championName
-			val = allChampionData[key]["name"]
-			if championName == val:
-				championID = key
-				break
-		if championID == None:
-			# TODO does this happen? We might fail to get a champion's ID
-			# if we don't have the latest data dragon.
-			raise KeyError("Couldn't recognize your champion. Do I know the latest patch number?")
+		championRosterURL = "http://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-summary.json"
+		championRoster = requests.get(championRosterURL).json()  # TODO might fail
+		championRosterEntryGet = [entry for entry in championRoster if entry['name'] == championName]
+		championRosterEntry = championRosterEntryGet[0]
+		championRawID = championRosterEntry["id"]
+		# championAlias = championRosterEntry["alias"]  # TODO don't need this
+		skinRawID = str(1000*championRawID + skinID)
 
+		# Find skinName by checking skinRawID against every skin and every chroma for that champion
+		championInfoURL = f"http://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champions/{championRawID}.json"
+		championInfo = requests.get(championInfoURL).json()
+		championSkins = championInfo["skins"]
+		i = 0
+		foundSkin = False
+		skinName = championName
+		while i < len(championSkins) and not foundSkin:
+			if championSkins[i]["id"] == skinRawID:
+				foundSkin = True
+				skinName = championSkins[i]["name"]
+			if "chromas" in championSkins[i].keys():
+				chromas = championSkins[i]["chromas"]
+				j = 0
+				while j < len(chromas) and not foundSkin:
+					if chromas[j]["id"] == skinRawID:
+						foundSkin = True
+						skinName = chromas[j]["name"]
+					j += 1
+			i += 1
 
-		# championID+skinID -> skinName
-		# TODO what if we can't pull the skins correctly here?? skin = skin[0] has thrown errors before.
-		championData = requests.get(data_dragon_url+"champion/"+championID+".json").json()
-		skins = championData["data"][championID]["skins"]
-		skin = [skin for skin in skins if skin['num'] == skinID]
-		skin = skin[0]
-		self.skinName = skin["name"]
-		if self.skinName == 'default':
-			self.skinName = championName
-		
-		# Now we can get and apply the state.
-		state = db_manager.get_state(self.skinName)
-		if state is None:
-			self.light_manager.apply_color(transitiontime=20)
-		else:
-			state = ''.join(state.split('\''))  # strip all single quotes.
-			state = str2json(state)
-			state = {str(key): state[key] for key in state}
-			self.light_manager.apply_state(state, transitiontime=20)
+		# Get a good image, whether it's a base character, skin, or chroma
+		splashURL = f"https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-splashes/{championRawID}/{skinRawID}.jpg"
+		res = requests.get(splashURL)
+		if res.status_code == 404:
+			chromaURL = f"https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-chroma-images/{championRawID}/{skinRawID}.jpg"
+			res = requests.get(chromaURL)
+		if res.status_code != 200:
+			raise ConnectionError(f"Error code {res.status_code} when getting art for {skinRawID}.")
+		img = np.array(Image.open(BytesIO(res.content)))
 
-		# We will try to remember what light state the user wants for this skin,
-		#    and sporadically check if they've adjusted the lights,
-		#    particularly at aces and at endgame.
-		self.state_to_remember = light_manager.get_state()
+		# big model
+		scene_id = model.img_to_scene(img, skinName, queryman)
+
+		# apply model result and go into main loop
+		queryman.recall_dynamic_scene(scene_id)
 		self.main_loop()
 
 	def main_loop(self):
@@ -119,13 +119,6 @@ class GameManager:
 
 				# If the game ends
 				if "GameEnd" in freshEventNames:
-					# If the Hue color is reliable, let's store it.
-					if (currentTime - self.lastColorChangeTime) > self.time_buffer:
-						db_manager.set_state(self.skinName, self.light_manager.get_state())
-					# Otherwise we'll store whatever we last saw as reliable.
-					else:
-						db_manager.set_state(self.skinName, self.state_to_remember)
-
 					result = [event["Result"] for event in freshEvents if event["EventName"] == "GameEnd"][0]
 					if result == "Win":
 						self.light_manager.apply_color(xy=self.light_manager.BLUE)
@@ -133,8 +126,6 @@ class GameManager:
 						self.light_manager.apply_color(xy=self.light_manager.RED)
 					sleep(4)
 					break
-				elif "MinionsSpawning" in freshEventNames:
-					self.state_to_remember = self.light_manager.get_state()
 				elif "Ace" in freshEventNames:
 					acingTeam = [event["AcingTeam"] for event in freshEvents if event["EventName"] == "Ace"][0]
 					if acingTeam == self.team:
