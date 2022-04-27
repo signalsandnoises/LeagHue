@@ -10,6 +10,8 @@ import urllib3
 from configparser import ConfigParser
 from colorlib import *
 from QueryManager import QueryManager
+from GameState import GameManager
+from time import sleep
 import model
 
 # League constants
@@ -64,20 +66,21 @@ while True:
 		initialized = False
 		next_event_id = 0
 		i += 1
+		sleep(10)
 
 	if response is not None:  # Client's running.
 		json = response.json()
 		if 'events' in json:  # wait for the game to officially start
 			if len(json['events']['Events']) > 0:
 				print("Game started.")
+				intergame_state = queryman.get_light_states()
 
-				intergame_state = light_manager.get_state()
+				# The GameManager object takes care of the entire League game upon instantiation
+				# It "finishes construction" only once the game is no longer running.
+				game_manager = GameManager(queryman, json)
 
-				# TODO I hate this file/class naming
-				game_manager = GameState.GameManager(light_manager, json)
+				queryman.apply_light_states(intergame_state)
 
-				# Once the GameManager exits, we go back to the usual state and poll at 0.5 Hz through the try/except clause
-				light_manager.apply_state(loads(intergame_state))
 		sleep(0.05) # We poll at 20 Hz if the HTTP connection works but the game hasn't started.
 
 
@@ -101,6 +104,6 @@ league_address = "https://127.0.0.1:2999/liveclientdata/allgamedata/"
 
 scene_name = f"{champion}_{skinID}"
 scene_id = model.img_to_scene(img, scene_name, queryman=queryman)
-queryman.recall_scene(scene_id)
+queryman.recall_dynamic_scene(scene_id)
 
 queryman.delete_scene(scene_id)

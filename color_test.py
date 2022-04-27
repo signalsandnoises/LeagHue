@@ -26,8 +26,8 @@ groupType = config["Philips Hue"]['group_type']
 
 base_request_url = f"https://{address}/clip/v2/resource"
 
-champion = "DrMundo"
-skinID = 4
+champion = "Seraphine"
+skinID = 3
 
 # From a championID and skinID, get the url to query its splash art.
 # If none is given, generate the url for a random skin's splash.
@@ -59,9 +59,11 @@ if img is None:
     raise ImportError("Unable to fetch splash art for this skin!")
 
 queryman = QueryManager(config)
+
+
 scene_name = f"{champion}_{skinID}"
 scene_id = model.img_to_scene(img, scene_name, queryman=queryman, debugging=True)
 
-queryman.recall_scene(scene_id)
+queryman.recall_dynamic_scene(scene_id)
 plt.show()
 queryman.delete_scene(scene_id)

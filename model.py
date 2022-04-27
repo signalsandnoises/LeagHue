@@ -65,6 +65,7 @@ def img_to_scene(img, scene_name: str, queryman: QueryManager, debugging=False) 
 
     color_centers_hsv_flat = np.copy(color_centers_hsv)
     color_centers_hsv_flat[2] = 1
+    color_centers_hsv_flat[1] = 0.45*color_centers_hsv_flat[1]**2 + 0.55  # TODO saturating everything is a quick hack
     color_centers_rgb_flat = hsv_to_rgb(np.copy(color_centers_hsv_flat)).astype(int)
     color_centers_hex_flat = [rgb_to_hex(color) for color in np.transpose(color_centers_rgb_flat)]
     color_centers_xyb_flat = rgb_to_xyb(np.copy(color_centers_rgb_flat))

@@ -39,7 +39,7 @@ class QueryManager:
 
         states = {}
         for light_id in light_ids:
-            state = self.get_resource(f"/light/{light_id}")
+            state = self.get_resource(f"/light/{light_id}")[0]
 
             body = {
                 "color": {
@@ -74,23 +74,20 @@ class QueryManager:
             self.put_resource(f"/light/{light_id}", json=json, **kwargs)
 
 
-    def rainbow(self, recall_scene_id: str, time_per_cycle = 12, cycles = 1):
+    def rainbow(self, recall_scene_id: str, time_per_cycle = 6, cycles = 2):
         """
         Does a rainbow on each of the lights, then recalls a scene dynamically.
         return_to: the id of a scene to return to.
         """
-        gamut = [[0.6915, 0.3038],
-                 [0.17, 0.7],
-                 [0.1532, 0.0475]]
 
-        hex_gamut = [[0.6915, 0.3038],
-                     [0.4308, 0.5019],
-                     [0.17, 0.7],
-                     [0.1616, 0.3737],
-                     [0.1616, 0.1],
-                     [0.42235, 0.17565]]
+        x = [0.64007440, 0.29887321, 0.20410905, 0.31840055, 0.62558534]
+        y = [0.32997046, 0.59594318, 0.23778214, 0.20785135, 0.32992757]
+        transition_coeffs = [1, 3, 2, 2, 2]
+        scalar = len(transition_coeffs) / sum(transition_coeffs)
+        transition_coeffs = [scalar * coeff for coeff in transition_coeffs]
+        n_points = 5
 
-
+        """OLD CODE
         #                         R    Y    YG   BG   C    B    I    V    M
         hsv_gamut = np.array([[   0,  36,  72, 148, 180, 200, 252, 288, 324],
                               [   1,   1,   1,   1,   1, 0.8, 0.5, 0.8, 0.8],
@@ -105,12 +102,12 @@ class QueryManager:
                               [   1,   3,   2.5,   2,   2])
         transition_coeffs = transition_coeffs / np.mean(transition_coeffs)
 
-
         rgb_gamut = colorlib.hsv_to_rgb(hsv_gamut)
         xy_gamut = colorlib.rgb_to_xyb(rgb_gamut)
         x = xy_gamut[0]
         y = xy_gamut[1]
         n_points = len(x)
+        """
 
         request_duration_s = time_per_cycle / n_points
         request_duration_ms = int(request_duration_s * 1000)
@@ -136,21 +133,14 @@ class QueryManager:
         for thread in threads:
             thread.start()
 
-        start = time()
         for cycle in range(cycles):
             for point in range(n_points):
-                tick = time()
                 sleep(request_duration_s*transition_coeffs[point])
                 barrier.wait()
-                tock = time()
                 barrier.reset()
-                print(tock - tick)
 
         for thread in threads:
             thread.join()
-        stop = time()
-        print("@"*10)
-        print(stop - start)
 
         self.recall_dynamic_scene(recall_scene_id)
 
@@ -191,11 +181,11 @@ class QueryManager:
                             "on": True
                         },
                         "color": self._color(base_x[i], base_y[i]),
-                        # "dimming": {  # TODO do we need "dimming"?
+                        # "dimming": {  # TODO do we need "dimming"? ~~YES WE DO~~ NO WE DONT
                         #     "brightness": 100
                         # },
                         "dynamics": {  # TODO is this useful?
-                            "duration": 400
+                            "duration": 800
                         }
                     },
                     "target": {
@@ -220,7 +210,7 @@ class QueryManager:
                     }
                 ]
             },
-            "speed": 0.8,
+            "speed": 0.4,
             "type": "scene"
         }
 
