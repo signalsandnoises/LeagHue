@@ -3,7 +3,8 @@
 If you've got Philips Hue lights at your desk and you play League of Legends, try using LeagHue! 
 It will run in the background and build a dynamic scene to match your champion. It will also celebrate aces with an RGB color sweep.  
 
-### Setup:
+
+## Installation
 
 LeagHue is under active development, and I don't have an installer put together right now. You will have to install this manually.
 
