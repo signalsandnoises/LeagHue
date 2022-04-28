@@ -3,7 +3,6 @@
 
 from json import loads as str2json
 import requests
-import db_manager
 from time import sleep
 from QueryManager import QueryManager
 import numpy as np
