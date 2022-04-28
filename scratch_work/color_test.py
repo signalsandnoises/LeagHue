@@ -11,6 +11,9 @@ from configparser import ConfigParser
 from colorlib import *
 from QueryManager import QueryManager
 import model
+from time import time
+
+tick = time()
 
 # League constants
 patch = requests.get("https://ddragon.leagueoflegends.com/api/versions.json").json()[0]
@@ -40,7 +43,9 @@ def splash_url(championID=None, skinID=None) -> str:
         randomSkinID = random.randint(0, numberOfSkins)
         championID = randomChampionID
         skinID = randomSkinID
-    return f"https://ddragon.leagueoflegends.com/cdn/img/champion/loading/{championID}_{skinID}.jpg"
+    #return f"https://ddragon.leagueoflegends.com/cdn/img/champion/loading/{championID}_{skinID}.jpg"
+    return "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-splashes/25/25000.jpg"
+    # TODO remove this
 
 
 # Fetch from url and return image as np array.
@@ -58,12 +63,21 @@ img = load_image(url)
 if img is None:
     raise ImportError("Unable to fetch splash art for this skin!")
 
+tock = time()
+print(f"Startup: {tock - tick}")
+
+tick = time()
 queryman = QueryManager(config)
+tock = time()
+print(f"QueryManager constructor: {tock - tick}")
+
 
 
 scene_name = f"{champion}_{skinID}"
-scene_id = model.img_to_scene(img, scene_name, queryman=queryman, debugging=True)
-
-queryman.recall_dynamic_scene(scene_id)
-plt.show()
+tick = time()
+scene_id = model.img_to_scene(img, scene_name, queryman=queryman, debugging=False)
+tock = time()
+print(f"Model: {tock - tick}")
+#queryman.recall_dynamic_scene(scene_id)
+#plt.show()
 queryman.delete_scene(scene_id)

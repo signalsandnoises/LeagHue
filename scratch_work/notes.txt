@@ -24,3 +24,12 @@ Goals:
     Seraphine_3 should have a nice spread of colors.
     Senna_0 should not select red.
 
+Ideas:
+    To select k, perform clustering with a large k, say k=12.
+    For each k, weight them proportionally by the # of points in that cluster and to the saturation of that cluster center
+
+Tickets:
+* Implement a logger
+* Build a better coloring model
+* Reduce model time.
+* Monitor system processes for `LeagueClient.exe` so that LeagHue can check less frequently when you're not playing vidya.

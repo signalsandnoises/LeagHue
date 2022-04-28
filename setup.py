@@ -142,14 +142,10 @@ def setup(debug=False):
     user, key = authenticateBridge(address, bridge_id)  # authentication stuff
     print("STEP TWO COMPLETE.")
 
-    print("\nSTEP THREE: Select Light Zone")
+    print("\nSTEP THREE: Select Light Group")
     selectGroup(address, user, key)
     print("STEP THREE COMPLETE.")
-    """
-    print("\nSTEP THREE: Select Lights")
-    selectLights(address, user, key)  # configuration stuff
-    print("STEP THREE COMPLETE.")
-    """
+
 
     with open('config.ini', 'w') as configfile:
         config.write(configfile)

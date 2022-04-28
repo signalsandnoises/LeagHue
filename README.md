@@ -1,44 +1,35 @@
 # LeagHue
 
-This repository contains a Python script which can coordinate your Philips Hue lights with the League of Legends client.
-
-### Features:
-* Auto-load a color scheme to match your favorite champion.
-* Tweak your color scheme mid-game, and it will remember.
-* Mark in-game events such as Ace, Victory, or Defeat
-
-
-
-### Performance:
-This script will run in the background and check every 2 seconds whether a League game is running.
-During a game, it will sample the LocalHost API at no more than 10 Hz for in-game events.
-If you change the lighting scheme during the game, it will do its best to remember.  
+If you've got Philips Hue lights at your desk and you play League of Legends, try using LeagHue! 
+It will run in the background and build a dynamic scene to match your champion. It will also celebrate aces with an RGB color sweep.  
 
 ### Setup:
-1. Follow the Philips Hue API ["Get Started" guide](https://developers.meethue.com/develop/get-started-2/) to create an authorized user. 
-2. Store the Bridge local IP Address, your new username, and the IDs of the lights you want to control in `main.pyw`, in the parameters `ip`,`active_IDs`, `username` respectively.
-3. Install Python
-4. Run `db_manager.py` with Python and type "yes" when prompted to overwrite the database.
-5. Ensure that the default program to open a .pyw file is `pythonw.exe` in your Python installation 
-6. Install the libraries **phue** and **requests** with `pip`.
-7. If all has gone well, you should be able to input `python`,`import phue`,`import requests` into Command Prompt and get no errors.  
-8. Create a shortcut to `main.pyw` and add this shortcut to your system Startup folder:         
 
-```C:\Users\{current_user}\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\```
+LeagHue is under active development, and I don't have an installer put together right now. You will have to install this manually.
+
+1. Download this repository and place it in a safe folder. I suggest your documents folder. 
+1. Install [Python](https://www.python.org/).
+3. Open a command-line interface in the LeagHue directory, and install the package requirements. 
+   * Windows: `py -m pip install -r requirements.txt`
+   * Unix/macOS: `python -m pip install -r requirements.txt`
+   * Details on using [pip](https://pip.pypa.io/en/stable/user_guide/#requirements-files) 
+4. In the same command-line interface, run `setup.py`. It will tell you when to press the Link button on your Philips Hue Bridge, 
+and it will need you to select a room or zone containing the lights around your desk.    
+   * Windows: `py setup.py`
+   * Unix/macOS: `python setup.py` 
+   1. `setup.py` will first have you authenticate by pressing the Link button on your Hue Bridge.
+   2. `setup.py` will then have you select a room or zone containing the lights around your desk.
+5. Ensure that the default program to open a `.pyw` file is `pythonw.exe`, located in your Python installation.
+    * Windows, assuming default Python installation: 
+        1. Open the LeagHue folder in File Explorer 
+        2. Right-click `main.pyw` > "Open with" > "Choose another app"
+        4. Check "Always use this app to open .pyw files"
+        5. Click "More apps", scroll down, and click "Look for another app on this PC"
+        6. Navigate to `C:\Users\{user}\AppData\Local\Programs\Python\Python{XY}` and open `pythonw.exe` 
+6. Add `main.pyw` to your startup programs.
+    * Windows:
+        1. Create a shortcut to `main.pyw`
+        2. Add this shortcut to `C:\Users\{user}\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\`
+7. Restart your computer
 
 
-### Tickets (roughly ordered):
-* Implement a logger
-* Create a config.txt with all parameters for easier configuration
-* Make the light turn dim white when your champion is dead.
-* Get the latest patch automatically without it being a parameter in GameState.py
-* Monitor system processes for `LeagueClient.exe` so that LeagHue can check less frequently when you're not playing vidya.
-* Get all champion splash arts and compute good colors on db_manager initialization.
-* Store brightness in addition to color? It would be nice so that a user can get exactly the color they want, but users would then be unable to adjust brightness to match their room environment. The resolution would have to be to store a brightness coefficient, not the brightness. 
-* Go to ColorLoop between games
-* Include functionality to make step 2 of the setup easier by pressing the Bridge button.
-
-
-### Non-Standard Dependencies:
-* phue
-* requests

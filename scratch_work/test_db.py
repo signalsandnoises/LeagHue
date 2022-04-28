@@ -27,6 +27,3 @@ def testAuthentication(address="10.0.0.50"):
     res = requests.post(url=f"http://{address}/api", json=request_body)
     print(res.status_code)
     assert False
-
-
-def testLights
