@@ -1,9 +1,9 @@
 from matplotlib import pyplot as plt
 from matplotlib.patches import Rectangle
 from colorlib import *
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans, MiniBatchKMeans
 from QueryManager import QueryManager
-
+from time import time
 
 
 def img_to_scene(img, scene_name: str, queryman: QueryManager, debugging=False) -> str:
@@ -18,37 +18,62 @@ def img_to_scene(img, scene_name: str, queryman: QueryManager, debugging=False) 
     blank_hsv = [0, 0, 0.95]
     sat_threshold = 0.3
     bri_threshold = 0.5
-    img_hsv = rgb_img_to_hsv_img(img)
-    # First mask the HSV pixels with low S or low V
-    img_hsv_masked = mask_pixels_by_channel(img=img_hsv,
-                                            channel_index=1,
-                                            channel_filter=lambda sat: sat > sat_threshold,
-                                            blank=blank_hsv)
-    img_hsv_masked = mask_pixels_by_channel(img=img_hsv_masked,
-                                            channel_index=2,
-                                            channel_filter=lambda val: val > bri_threshold,
-                                            blank=blank_hsv)
-    # Apply the same mask in RGB space
-    img_rgb_masked = hsv_img_to_rgb_img(img_hsv_masked)
 
-    # Now actually filter out the masked pixels. Reduces data size.
-    # TODO symptoms of bad design here.
-    # TODO I should have designed my functions to flatten vertically, not horizontally, to avoid this mess.
-    dim, pixels_hsv_unfiltered = flatten_image(img_hsv_masked)
-    pixels_hsv_tidy = np.array([px for px in np.transpose(pixels_hsv_unfiltered) if not np.array_equal(px, blank_hsv)])
-    pixels_hsv = np.transpose(pixels_hsv_tidy)
-    prop_pixels_retained = np.shape(pixels_hsv)[1] / (np.shape(img_hsv)[0] * np.shape(img_hsv)[1])
-    pixels_rgb = hsv_to_rgb(pixels_hsv)
-    pixels_xyb = rgb_to_xyb(hsv_to_rgb(np.copy(pixels_hsv)))
-    pixels_xyb_tidy = np.transpose(pixels_xyb)
+    if debugging:
+        img_hsv = rgb_img_to_hsv_img(img)
+        # First mask the HSV pixels with low S or low V
+        img_hsv_masked = mask_pixels_by_channel(img=img_hsv,
+                                                channel_index=1,
+                                                channel_filter=lambda sat: sat > sat_threshold,
+                                                blank=blank_hsv)
+        img_hsv_masked = mask_pixels_by_channel(img=img_hsv_masked,
+                                                channel_index=2,
+                                                channel_filter=lambda val: val > bri_threshold,
+                                                blank=blank_hsv)
+        # Apply the same mask in RGB space
+        img_rgb_masked = hsv_img_to_rgb_img(img_hsv_masked)
+
+        # Now actually filter out the masked pixels. Reduces data size.
+        # TODO symptoms of bad design here.
+        # TODO I should have designed my functions to flatten vertically, not horizontally, to avoid this mess.
+        dim, pixels_hsv_unfiltered = flatten_image(img_hsv_masked)
+        pixels_hsv_tidy = np.array([px for px in np.transpose(pixels_hsv_unfiltered) if not np.array_equal(px, blank_hsv)])
+        pixels_hsv = np.transpose(pixels_hsv_tidy)
+        prop_pixels_retained = np.shape(pixels_hsv)[1] / (np.shape(img_hsv)[0] * np.shape(img_hsv)[1])
+        # pixels_rgb = hsv_to_rgb(pixels_hsv)
+        pixels_xyb = rgb_to_xyb(hsv_to_rgb(np.copy(pixels_hsv)))
+        pixels_xyb_tidy = np.transpose(pixels_xyb)
+    else:
+        dim, pixels_rgb = flatten_image(img)
+        pixels_rgb = pixels_rgb[:, np.any(pixels_rgb > int(bri_threshold*255), axis=0)]
+        print(pixels_rgb.shape)
+        #exit()
+        pixels_hsv = rgb_to_hsv(pixels_rgb)
+        #pixels_hsv_tidy = np.reshape(img_hsv, (-1,3))
+        pixels_hsv_tidy = np.transpose(rgb_to_hsv(pixels_hsv))
+        pixels_hsv_tidy = pixels_hsv_tidy[np.nonzero((pixels_hsv[1] > sat_threshold)
+                                                     * (pixels_hsv[2] > bri_threshold))]
+        print(np.shape(pixels_hsv_tidy))
+        exit()
+        pixels_hsv = np.transpose(pixels_hsv_tidy)
+
+
+        pixels_xyb_tidy = np.transpose(rgb_to_xyb(hsv_to_rgb(pixels_hsv)))
+
+    subtock = time()
+    print(f"Filtering: {subtock - subtick}")
 
     ##
     ## SECTION TWO: SELECTING A COLOR PALETTE
     ##
     n_clusters = 9
 
+    subtick = time()
     kmeans = KMeans(n_clusters=n_clusters, random_state=4004).fit(X=pixels_xyb_tidy,
                                                                   sample_weight=np.exp(pixels_hsv[1]))
+    subtock = time()
+    print(f"KMeans: {subtock - subtick}")
+    subtick = time()
     color_centers_xyb = np.transpose(kmeans.cluster_centers_)
     color_centers_rgb = xyb_to_rgb(np.copy(color_centers_xyb))
     color_centers_hsv = rgb_to_hsv(np.copy(color_centers_rgb))
@@ -60,8 +85,8 @@ def img_to_scene(img, scene_name: str, queryman: QueryManager, debugging=False) 
     opposite_hue = ((mean_hue + np.pi) % (2 * np.pi)) * (360 / (2 * np.pi))
     hue_index = np.argsort((hue + opposite_hue) % 360)
     color_centers_hsv = color_centers_hsv[:, hue_index]
-    color_centers_xyb = color_centers_xyb[:, hue_index]
-    color_centers_rgb = color_centers_rgb[:, hue_index]
+    # color_centers_xyb = color_centers_xyb[:, hue_index]
+    # color_centers_rgb = color_centers_rgb[:, hue_index]
 
     color_centers_hsv_flat = np.copy(color_centers_hsv)
     color_centers_hsv_flat[2] = 1
@@ -121,7 +146,9 @@ def img_to_scene(img, scene_name: str, queryman: QueryManager, debugging=False) 
     ##
     ## SECTION FOUR: CREATING AND APPLYING THE SCENE
     ##
+    subtock = time()
     scene_id = queryman.post_scene(sceneName=scene_name,
                                    x=color_centers_xyb_flat[0],
                                    y=color_centers_xyb_flat[1])
+    print(f"Wrapping it up: {subtock - subtick}")
     return scene_id
