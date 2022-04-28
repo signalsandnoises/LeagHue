@@ -18,7 +18,7 @@ def img_to_scene(img, scene_name: str, queryman: QueryManager, debugging=False) 
     blank_hsv = [0, 0, 0.95]
     sat_threshold = 0.3
     bri_threshold = 0.5
-
+    subtick = time()
     if debugging:
         img_hsv = rgb_img_to_hsv_img(img)
         # First mask the HSV pixels with low S or low V
@@ -54,7 +54,7 @@ def img_to_scene(img, scene_name: str, queryman: QueryManager, debugging=False) 
         pixels_hsv_tidy = pixels_hsv_tidy[np.nonzero((pixels_hsv[1] > sat_threshold)
                                                      * (pixels_hsv[2] > bri_threshold))]
         print(np.shape(pixels_hsv_tidy))
-        exit()
+        #exit()
         pixels_hsv = np.transpose(pixels_hsv_tidy)
 
 
