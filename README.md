@@ -11,15 +11,11 @@ LeagHue is under active development, and I don't have an installer put together 
 1. Install [Python](https://www.python.org/).
 3. Open a command-line interface in the LeagHue directory, and install the package requirements. 
    * Windows: `py -m pip install -r requirements.txt`
-   * Unix/macOS: `python -m pip install -r requirements.txt`
-   * Details on using [pip](https://pip.pypa.io/en/stable/user_guide/#requirements-files) 
-4. In the same command-line interface, run `setup.py`. It will tell you when to press the Link button on your Philips Hue Bridge, 
-and it will need you to select a room or zone containing the lights around your desk.    
+   * Unix/macOS: `python -m pip install -r requirements.txt` 
+4. In the same command-line interface, run setup.py. It will first have you authenticate by pressing the Link button on your Philips Hue Bridge. It will then have you select a room or zone containing the lights at your desk. 
    * Windows: `py setup.py`
    * Unix/macOS: `python setup.py` 
-   1. `setup.py` will first have you authenticate by pressing the Link button on your Hue Bridge.
-   2. `setup.py` will then have you select a room or zone containing the lights around your desk.
-5. Ensure that the default program to open a `.pyw` file is `pythonw.exe`, located in your Python installation.
+5. Ensure that the default program to open a .pyw file is `pythonw.exe`, located in your Python installation.
     * Windows, assuming default Python installation: 
         1. Open the LeagHue folder in File Explorer 
         2. Right-click `main.pyw` > "Open with" > "Choose another app"
