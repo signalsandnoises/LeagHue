@@ -85,13 +85,24 @@ class GameManager:
 		splashURL = f"https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-splashes/{championRawID}/{skinRawID}.jpg"
 		res = requests.get(splashURL)
 		if res.status_code == 404:
-			chromaURL = f"https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-chroma-images/{championRawID}/{skinRawID}.jpg"
+			chromaURL = f"https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-chroma-images/{championRawID}/{skinRawID}.png"
 			res = requests.get(chromaURL)
 		if res.status_code != 200:
 			raise ConnectionError(f"Error code {res.status_code} when getting art for {skinRawID}.")
-		img = np.array(Image.open(BytesIO(res.content)))
-		# big model
-		print(res.url)
+		img = np.array(Image.open(BytesIO(res.content)).convert('RGB'))
+
+
+		# if np.shape(img)[2] = 4, then we've got RGBA
+		# let's convert it to RGB on a white background
+		# first compute delta = 255 - RGB
+		# then compute A = RGB[:,:,3]
+		# if A = 0, we add the full delta
+		# if A = 1, we add none of the delta
+		# thus, we finally compute RGB + (1-A)*delta
+
+
+
+
 		self.scene_id = model.img_to_scene(img, skinName, queryman)
 
 		# apply model result and go into main loop

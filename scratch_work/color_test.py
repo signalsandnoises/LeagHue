@@ -49,13 +49,14 @@ def splash_url(championID=None, skinID=None) -> str:
 
 
 
+
 # Fetch from url and return image as np array.
 # Returns None if no image is found.
 def load_image(url) -> np.ndarray:
     res = requests.get(url)
     if res.status_code != 200:
         return None
-    img = np.array(Image.open(BytesIO(res.content)))
+    img = np.array(Image.open(BytesIO(res.content)).convert('RGB'))
     return img
 
 url = splash_url(champion, skinID)
@@ -73,16 +74,11 @@ tock = time()
 print(f"QueryManager constructor: {tock - tick}")
 
 
-
 scene_name = f"{champion}_{skinID}"
 tick = time()
-scene_id = model.img_to_scene(img, scene_name, queryman=queryman, debugging=False)
+scene_id = model.img_to_scene(img, scene_name, queryman=queryman, debugging=True)
 tock = time()
 print(f"Model: {tock - tick}")
 queryman.recall_dynamic_scene(scene_id)
 plt.show()
 queryman.delete_scene(scene_id)
-
-
-# TODO this blitzcrank 56022 with debugging=False has the same samples as debugging=True, but its colors are
-# all orange for some reason.
