@@ -20,7 +20,7 @@ patch = requests.get("https://ddragon.leagueoflegends.com/api/versions.json").js
 data_dragon_url = f"https://ddragon.leagueoflegends.com/cdn/{patch}/data/en_US/"
 # Hue constants
 config = ConfigParser()
-config.read('config.ini')
+config.read('../config.ini')
 address = config["Philips Hue"]['bridge_address']
 user = config["Philips Hue"]['user']
 key = config["Philips Hue"]['key']
@@ -29,8 +29,8 @@ groupType = config["Philips Hue"]['group_type']
 
 base_request_url = f"https://{address}/clip/v2/resource"
 
-champion = "Seraphine"
-skinID = 3
+champion = "Blitzcrank"
+skinID = 22
 
 # From a championID and skinID, get the url to query its splash art.
 # If none is given, generate the url for a random skin's splash.
@@ -43,9 +43,10 @@ def splash_url(championID=None, skinID=None) -> str:
         randomSkinID = random.randint(0, numberOfSkins)
         championID = randomChampionID
         skinID = randomSkinID
-    #return f"https://ddragon.leagueoflegends.com/cdn/img/champion/loading/{championID}_{skinID}.jpg"
-    return "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-splashes/25/25000.jpg"
-    # TODO remove this
+
+    return f"https://ddragon.leagueoflegends.com/cdn/img/champion/loading/{championID}_{skinID}.jpg"
+
+
 
 
 # Fetch from url and return image as np array.
@@ -78,6 +79,10 @@ tick = time()
 scene_id = model.img_to_scene(img, scene_name, queryman=queryman, debugging=False)
 tock = time()
 print(f"Model: {tock - tick}")
-#queryman.recall_dynamic_scene(scene_id)
-#plt.show()
+queryman.recall_dynamic_scene(scene_id)
+plt.show()
 queryman.delete_scene(scene_id)
+
+
+# TODO this blitzcrank 56022 with debugging=False has the same samples as debugging=True, but its colors are
+# all orange for some reason.

@@ -19,6 +19,7 @@ def img_to_scene(img, scene_name: str, queryman: QueryManager, debugging=False) 
     sat_threshold = 0.3
     bri_threshold = 0.5
     subtick = time()
+    print(f"debugging={debugging}")
     if debugging:
         img_hsv = rgb_img_to_hsv_img(img)
         # First mask the HSV pixels with low S or low V
@@ -37,7 +38,9 @@ def img_to_scene(img, scene_name: str, queryman: QueryManager, debugging=False) 
         # TODO symptoms of bad design here.
         # TODO I should have designed my functions to flatten vertically, not horizontally, to avoid this mess.
         dim, pixels_hsv_unfiltered = flatten_image(img_hsv_masked)
+        print(f"Starts at {pixels_hsv_unfiltered.shape}")
         pixels_hsv_tidy = np.array([px for px in np.transpose(pixels_hsv_unfiltered) if not np.array_equal(px, blank_hsv)])
+        print(f"Finally at {np.shape(pixels_hsv_tidy)[::-1]}")
         pixels_hsv = np.transpose(pixels_hsv_tidy)
         prop_pixels_retained = np.shape(pixels_hsv)[1] / (np.shape(img_hsv)[0] * np.shape(img_hsv)[1])
         # pixels_rgb = hsv_to_rgb(pixels_hsv)
@@ -45,31 +48,39 @@ def img_to_scene(img, scene_name: str, queryman: QueryManager, debugging=False) 
         pixels_xyb_tidy = np.transpose(pixels_xyb)
     else:
         dim, pixels_rgb = flatten_image(img)
+        print(f"Starts at {pixels_rgb.shape}")
         pixels_rgb = pixels_rgb[:, np.any(pixels_rgb > int(bri_threshold*255), axis=0)]
-        print(pixels_rgb.shape)
-        #exit()
+        print(f"Goes down to {pixels_rgb.shape}")
+
+
         pixels_hsv = rgb_to_hsv(pixels_rgb)
+
+
         #pixels_hsv_tidy = np.reshape(img_hsv, (-1,3))
-        pixels_hsv_tidy = np.transpose(rgb_to_hsv(pixels_hsv))
+        pixels_hsv_tidy = np.transpose(pixels_hsv)
         pixels_hsv_tidy = pixels_hsv_tidy[np.nonzero((pixels_hsv[1] > sat_threshold)
                                                      * (pixels_hsv[2] > bri_threshold))]
-        print(np.shape(pixels_hsv_tidy))
+        print(f"Finally at {np.shape(pixels_hsv_tidy)[::-1]}")
         #exit()
         pixels_hsv = np.transpose(pixels_hsv_tidy)
 
 
-        pixels_xyb_tidy = np.transpose(rgb_to_xyb(hsv_to_rgb(pixels_hsv)))
+
+        pixels_xyb = rgb_to_xyb(hsv_to_rgb(np.copy(pixels_hsv)))
+        pixels_xyb_tidy = np.transpose(pixels_xyb)
 
     subtock = time()
     print(f"Filtering: {subtock - subtick}")
-
+    print("Reduced to", np.shape(pixels_xyb_tidy)[0], "samples")
+    print()
     ##
     ## SECTION TWO: SELECTING A COLOR PALETTE
     ##
     n_clusters = 9
 
+
     subtick = time()
-    kmeans = KMeans(n_clusters=n_clusters, random_state=4004).fit(X=pixels_xyb_tidy,
+    kmeans = MiniBatchKMeans(n_clusters=n_clusters, random_state=4004, batch_size=2048).fit(X=pixels_xyb_tidy,
                                                                   sample_weight=np.exp(pixels_hsv[1]))
     subtock = time()
     print(f"KMeans: {subtock - subtick}")
