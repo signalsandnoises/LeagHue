@@ -46,16 +46,16 @@ class GameManager:
 
 		# playerInfo -> various stuff
 		championName = playerInfo["championName"]
-		skinID = int(playerInfo["skinID"])
+		skinID: int = playerInfo["skinID"]
 		self.team = playerInfo["team"]
 
 		championRosterURL = "http://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-summary.json"
 		championRoster = requests.get(championRosterURL).json()  # TODO might fail
 		championRosterEntryGet = [entry for entry in championRoster if entry['name'] == championName]
 		championRosterEntry = championRosterEntryGet[0]
-		championRawID = championRosterEntry["id"]
+		championRawID: int = championRosterEntry["id"]
 		# championAlias = championRosterEntry["alias"]  # TODO don't need this
-		skinRawID = str(1000*championRawID + skinID)
+		skinRawID = 1000*championRawID + skinID
 
 		# Find skinName by checking skinRawID against every skin and every chroma for that champion
 		championInfoURL = f"http://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champions/{championRawID}.json"
@@ -78,6 +78,9 @@ class GameManager:
 					j += 1
 			i += 1
 
+		# TODO remove this after everything works
+		skinName = f"{skinName} ({skinRawID})"
+
 		# Get a good image, whether it's a base character, skin, or chroma
 		splashURL = f"https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-splashes/{championRawID}/{skinRawID}.jpg"
 		res = requests.get(splashURL)
@@ -87,8 +90,8 @@ class GameManager:
 		if res.status_code != 200:
 			raise ConnectionError(f"Error code {res.status_code} when getting art for {skinRawID}.")
 		img = np.array(Image.open(BytesIO(res.content)))
-
 		# big model
+		print(res.url)
 		self.scene_id = model.img_to_scene(img, skinName, queryman)
 
 		# apply model result and go into main loop
