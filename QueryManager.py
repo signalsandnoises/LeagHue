@@ -185,7 +185,7 @@ class QueryManager:
                         #     "brightness": 100
                         # },
                         "dynamics": {  # TODO is this useful?
-                            "duration": 800
+                            "duration": 400
                         }
                     },
                     "target": {
@@ -210,7 +210,7 @@ class QueryManager:
                     }
                 ]
             },
-            "speed": 0.4,
+            "speed": 0.75,
             "type": "scene"
         }
 
