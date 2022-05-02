@@ -1,8 +1,12 @@
-# LeagHue
+<img src="https://user-images.githubusercontent.com/11370378/166312216-c5be9194-e41d-4a64-afa1-54a1bdafcf57.png" alt="LeagHue" width="400"/>
+
+---
 
 If you've got Philips Hue lights at your desk and you play League of Legends, try using LeagHue! 
-It will run in the background and build a dynamic scene to match your champion. It will also celebrate aces with an RGB color sweep.  
 
+https://user-images.githubusercontent.com/11370378/166311914-ada2ad1b-c9fd-4764-9710-4cba0e56e420.mp4
+
+On game start, LeagHue will read your champion's art and build a dynamic scene to match the colors. During the game, it will celebrate aces with an RGB color sweep.
 
 ## Installation
 
@@ -29,4 +33,6 @@ LeagHue is under active development, and I don't have an installer put together 
         2. Add this shortcut to `C:\Users\{user}\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\`
 7. Restart your computer
 
+---
 
+<sup>LeagHue was created under Riot Games' "Legal Jibber Jabber" policy using assets owned by Riot Games.  Riot Games does not endorse or sponsor this project.</sup>
