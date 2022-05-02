@@ -15,7 +15,7 @@ https://user-images.githubusercontent.com/11370378/166326260-63a8cf71-5a86-424c-
 LeagHue runs as a background process under a Python daemon.
 
 * On game start, your Hue lights will receive a dynamic scene to match your skin.
-* When your team scores an ace, your Hue lights will sweep through RGB to celebrate.
+* Whenever your team scores an ace, your Hue lights will sweep through RGB to celebrate.
 * On game end, your Hue lights will turn blue for victory or red for defeat.
 * After the game, your Hue lights will go to their previous state before the game started.
 
