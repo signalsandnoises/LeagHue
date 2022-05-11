@@ -29,44 +29,39 @@ groupType = config["Philips Hue"]['group_type']
 
 base_request_url = f"https://{address}/clip/v2/resource"
 
-champion = "Blitzcrank"
-skinID = 22
+championName = "Ashe"
+skinID = 0
 
-# From a championID and skinID, get the url to query its splash art.
-# If none is given, generate the url for a random skin's splash.
-def splash_url(championID=None, skinID=None) -> str:
-    if championID is None or skinID is None:
-        allChampionData = requests.get(data_dragon_url+"champion.json").json()["data"]
-        randomChampionID = random.choice(list(allChampionData.keys()))
-        randomChampionData = requests.get(f"{data_dragon_url}champion/{randomChampionID}.json").json()
-        numberOfSkins = len(randomChampionData["data"][randomChampionID]["skins"])
-        randomSkinID = random.randint(0, numberOfSkins)
-        championID = randomChampionID
-        skinID = randomSkinID
+championRosterURL = "http://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-summary.json"
+championRoster = requests.get(championRosterURL).json()  # TODO might fail
+championRosterEntryGet = [entry for entry in championRoster if entry['name'] == championName]
+championRosterEntry = championRosterEntryGet[0]
+championRawID: int = championRosterEntry["id"]
+skinRawID: int = 1000*championRawID + skinID
 
-    return f"https://ddragon.leagueoflegends.com/cdn/img/champion/loading/{championID}_{skinID}.jpg"
+splashURL = f"https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-splashes/{championRawID}/{skinRawID}.jpg"
+res = requests.get(splashURL)
+if res.status_code == 404:
+	chromaURL = f"https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-chroma-images/{championRawID}/{skinRawID}.png"
+	res = requests.get(chromaURL)
+if res.status_code != 200:
+	raise ConnectionError(f"Error code {res.status_code} when getting art for {skinRawID}.")
+img = np.array(Image.open(BytesIO(res.content)))
 
+n_pixels = np.shape(img)[0]*np.shape(img)[1]
+while n_pixels > 500000:
+    img = img[::2,::2]
+    n_pixels = np.shape(img)[0]*np.shape(img)[1]
 
+if np.shape(img)[2] == 4:  # then it's RGBA. convert to RGB.
+    # strategy: all pixels with alpha < 255 are sent to blank white
+    transparent_mask = img[:,:,3] < 255
+    img[transparent_mask] = [255,255,255,255]
+    img = img[:,:,0:3]
 
-
-
-# Fetch from url and return image as np array.
-# Returns None if no image is found.
-def load_image(url) -> np.ndarray:
-    res = requests.get(url)
-    if res.status_code != 200:
-        return None
-    img = np.array(Image.open(BytesIO(res.content)).convert('RGB'))
-    return img
-
-url = splash_url(champion, skinID)
-print(url)
-img = load_image(url)
-if img is None:
-    raise ImportError("Unable to fetch splash art for this skin!")
 
 tock = time()
-print(f"Startup: {tock - tick}")
+print(f"Startup (image fetching): {tock - tick}")
 
 tick = time()
 queryman = QueryManager(config)
@@ -74,11 +69,12 @@ tock = time()
 print(f"QueryManager constructor: {tock - tick}")
 
 
-scene_name = f"{champion}_{skinID}"
+scene_name = f"{championName}_{skinID}"
 tick = time()
 scene_id = model.img_to_scene(img, scene_name, queryman=queryman, debugging=True)
 tock = time()
 print(f"Model: {tock - tick}")
 queryman.recall_dynamic_scene(scene_id)
-plt.show()
 queryman.delete_scene(scene_id)
+plt.show()
+queryman.set_color()

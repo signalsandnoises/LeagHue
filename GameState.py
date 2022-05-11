@@ -55,7 +55,7 @@ class GameManager:
 		championRosterEntry = championRosterEntryGet[0]
 		championRawID: int = championRosterEntry["id"]
 		# championAlias = championRosterEntry["alias"]  # TODO don't need this
-		skinRawID = 1000*championRawID + skinID
+		skinRawID: int = 1000*championRawID + skinID
 
 		# Find skinName by checking skinRawID against every skin and every chroma for that champion
 		championInfoURL = f"http://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champions/{championRawID}.json"
@@ -91,17 +91,19 @@ class GameManager:
 			raise ConnectionError(f"Error code {res.status_code} when getting art for {skinRawID}.")
 		img = np.array(Image.open(BytesIO(res.content)).convert('RGB'))
 
+		# Downsize image if it's big.
+		# 1200x700 is too big. 500x300 is not too big.
+		n_pixels = np.shape(img)[0]*np.shape(img)[1]
+		while n_pixels > 500000:
+		    img = img[::2,::2]
+		    n_pixels = np.shape(img)[0]*np.shape(img)[1]
 
-		# if np.shape(img)[2] = 4, then we've got RGBA
-		# let's convert it to RGB on a white background
-		# first compute delta = 255 - RGB
-		# then compute A = RGB[:,:,3]
-		# if A = 0, we add the full delta
-		# if A = 1, we add none of the delta
-		# thus, we finally compute RGB + (1-A)*delta
-
-
-
+		# If the image is RGBA, convert it to RGB.
+		if np.shape(img)[2] == 4:
+		    # strategy: all pixels with alpha < 255 are sent to blank white
+		    transparent_mask = img[:,:,3] < 255
+		    img[transparent_mask] = [255,255,255,255]
+		    img = img[:,:,0:3]
 
 		self.scene_id = model.img_to_scene(img, skinName, queryman)
 

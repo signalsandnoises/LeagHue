@@ -16,7 +16,7 @@ def img_to_scene(img, scene_name: str, queryman: QueryManager, debugging=False) 
     ## SECTION ONE: PRE-PROCESSING THE IMAGE
     ##
     blank_hsv = [0, 0, 0.95]
-    sat_threshold = 0.3
+    sat_threshold = 0.2
     bri_threshold = 0.5
     subtick = time()
     print(f"debugging={debugging}")
@@ -80,28 +80,35 @@ def img_to_scene(img, scene_name: str, queryman: QueryManager, debugging=False) 
 
 
     subtick = time()
-    kmeans = MiniBatchKMeans(n_clusters=n_clusters, random_state=4004, batch_size=2048).fit(X=pixels_xyb_tidy,
+    n_clusters = 5
+    kmeans = MiniBatchKMeans(n_clusters=n_clusters, random_state=4004, batch_size=2048).fit(X=pixels_hsv_tidy,
                                                                   sample_weight=np.exp(pixels_hsv[1]))
     subtock = time()
     print(f"KMeans: {subtock - subtick}")
-    subtick = time()
-    color_centers_xyb = np.transpose(kmeans.cluster_centers_)
-    color_centers_rgb = xyb_to_rgb(np.copy(color_centers_xyb))
-    color_centers_hsv = rgb_to_hsv(np.copy(color_centers_rgb))
 
+    subtick = time()
+
+    color_centers_hsv = np.transpose(kmeans.cluster_centers_)
+    # We're not done here.
+
+    # First, color centers need to be ordered in a way that is not jarring.
     hue = color_centers_hsv[0]
     v_x = sum(np.cos(hue * 2 * np.pi / 360))
     v_y = sum(np.sin(hue * 2 * np.pi / 360))
-    mean_hue = np.arctan2(v_x, v_y)
+    mean_hue = np.arctan2(v_y, v_x)
     opposite_hue = ((mean_hue + np.pi) % (2 * np.pi)) * (360 / (2 * np.pi))
-    hue_index = np.argsort((hue + opposite_hue) % 360)
+    # sort the colors by going "clockwise" (increasing hue) from the opposite_hue
+    # e.g. if hue = [1, 215, 260, 305, 340] and opposite_hue = 120,
+    #      then we count 215, 260, 305, 340, 1+360.
+    #      the "+360" is added to complete the spiral
+    hue_index = np.argsort(hue + 360*(hue < opposite_hue))
     color_centers_hsv = color_centers_hsv[:, hue_index]
-    # color_centers_xyb = color_centers_xyb[:, hue_index]
-    # color_centers_rgb = color_centers_rgb[:, hue_index]
 
+    # Next, color centers need to be represented in other forms
     color_centers_hsv_flat = np.copy(color_centers_hsv)
-    color_centers_hsv_flat[2] = 1
-    color_centers_hsv_flat[1] = 0.45*color_centers_hsv_flat[1]**2 + 0.55  # TODO saturating everything is a quick hack
+    color_centers_hsv_flat[2] = 1  # No "blackness" value in a hue lamp
+    # Color centers also look better with a little extra saturation
+    color_centers_hsv_flat[1] = 0.6*color_centers_hsv_flat[1]**2 + 0.4
     color_centers_rgb_flat = hsv_to_rgb(np.copy(color_centers_hsv_flat)).astype(int)
     color_centers_hex_flat = [rgb_to_hex(color) for color in np.transpose(color_centers_rgb_flat)]
     color_centers_xyb_flat = rgb_to_xyb(np.copy(color_centers_rgb_flat))
@@ -161,5 +168,5 @@ def img_to_scene(img, scene_name: str, queryman: QueryManager, debugging=False) 
     scene_id = queryman.post_scene(sceneName=scene_name,
                                    x=color_centers_xyb_flat[0],
                                    y=color_centers_xyb_flat[1])
-    print(f"Wrapping it up: {subtock - subtick}")
+    print(f"Everything after kmeans: {subtock - subtick}")
     return scene_id
