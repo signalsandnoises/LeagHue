@@ -14,16 +14,16 @@ import model
 from time import time
 from GameState import GameManager
 
-
-champion = "Morgana"
-skinID = 24
-
-
-img = GameManager.get_champion_img(champion, skinID)
+# EDIT THESE
+championName = "Aatrox"
+skinID = 0
 
 
-# TODO our RGBA->RGB conversion is flawed. Example:
-# plt.imshow(GameManager.get_champion_img("Morgana", 25)
+tick = time()
+(championRawID, skinRawID) = GameManager.get_community_dragon_info(championName, skinID)
+img = GameManager.get_champion_img(championRawID, skinRawID)
+tock = time()
+print(f"Fetching suitable image: {tock - tick}")
 
 config = ConfigParser()
 config.read('../config.ini')
@@ -33,12 +33,13 @@ tock = time()
 print(f"QueryManager constructor: {tock - tick}")
 
 
-scene_name = f"{champion}_{skinID}"
+scene_name = f"{championName}_{skinID}"
 tick = time()
 # TODO look at expensive image processing here
 scene_id = model.img_to_scene(img, scene_name, queryman=queryman, debugging=True)
 tock = time()
 print(f"Model: {tock - tick}")
 queryman.recall_dynamic_scene(scene_id)
-plt.show()
 queryman.delete_scene(scene_id)
+plt.show()
+queryman.set_color()

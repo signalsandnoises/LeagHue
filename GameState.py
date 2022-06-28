@@ -49,24 +49,8 @@ class GameManager:
 		skinID: int = playerInfo["skinID"]
 		self.team = playerInfo["team"]
 
-		# championName and skinID -> championRawID + skinRawID (for community dragon)
-		championRosterURL = "http://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-summary.json"
-		championRoster = requests.get(championRosterURL).json()  # TODO might fail
-		championRosterEntryGet = [entry for entry in championRoster if entry['name'] == championName]
-		championRosterEntry = championRosterEntryGet[0]
-		championRawID: int = championRosterEntry["id"]
-		skinRawID = 1000*championRawID + skinID
-
-		# Get a good image, whether it's a base character, skin, or chroma
-		splashURL = f"https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-splashes/{championRawID}/{skinRawID}.jpg"
-		res = requests.get(splashURL)
-		if res.status_code == 404:
-			chromaURL = f"https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-chroma-images/{championRawID}/{skinRawID}.png"
-			res = requests.get(chromaURL)
-		if res.status_code != 200:
-			raise ConnectionError(f"Error code {res.status_code} when getting art for {skinRawID}.")
-		img = np.array(Image.open(BytesIO(res.content)).convert('RGB'))
-
+		(championRawID, skinRawID) = GameManager.get_community_dragon_info(championName, skinID)
+		img = GameManager.get_champion_img(championRawID, skinRawID)
 
 		# Find skinName by checking skinRawID against every skin and every chroma for that champion
 		championInfoURL = f"http://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champions/{championRawID}.json"
@@ -89,10 +73,6 @@ class GameManager:
 					j += 1
 			i += 1
 
-		# TODO remove this after everything works
-		# this line adds the skinRawID in the name of the scene
-		skinName = f"{skinName} ({skinRawID})"
-
 		self.scene_id = model.img_to_scene(img, skinName, queryman)
 
 		# apply model result and go into main loop
@@ -102,7 +82,7 @@ class GameManager:
 		queryman.apply_light_states(states)
 
 	@staticmethod
-	def get_champion_img(championName, skinID):
+	def get_community_dragon_info(championName: str, skinID: int) -> (int, int):
 		# championName and skinID -> championRawID + skinRawID (for community dragon)
 		championRosterURL = "http://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-summary.json"
 		championRoster = requests.get(championRosterURL).json()  # TODO might fail
@@ -110,7 +90,11 @@ class GameManager:
 		championRosterEntry = championRosterEntryGet[0]
 		championRawID: int = championRosterEntry["id"]
 		skinRawID = 1000 * championRawID + skinID
+		return(championRawID, skinRawID)
 
+
+	@staticmethod
+	def get_champion_img(championRawID, skinRawID):
 		# Get a good image, whether it's a base character, skin, or chroma
 		# First try the splashURL. If that 404s..
 		splashURL = f"https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-splashes/{championRawID}/{skinRawID}.jpg"
@@ -120,8 +104,22 @@ class GameManager:
 			res = requests.get(chromaURL)
 		if res.status_code != 200:
 			raise ConnectionError(f"Error code {res.status_code} when getting art for {skinRawID}.")
-		img = np.array(Image.open(BytesIO(res.content)).convert('RGB'))
+		img = np.array(Image.open(BytesIO(res.content)))
+
+		# Downsize image if it's too big.
+		# 1200x700 is too big. 500x300 is not too big.
+		n_pixels = np.shape(img)[0]*np.shape(img)[1]
+		while n_pixels > 500000:
+		    img = img[::2,::2]
+		    n_pixels = np.shape(img)[0]*np.shape(img)[1]
+
+		if np.shape(img)[2] == 4:  # then it's RGBA. convert to RGB.
+		    # strategy: all pixels with alpha < 255 are sent to blank white
+		    transparent_mask = img[:,:,3] < 255
+		    img[transparent_mask] = [255,255,255,255]
+		    img = img[:,:,0:3]
 		return img
+
 
 	def main_loop(self):
 		while True:
