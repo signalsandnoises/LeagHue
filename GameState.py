@@ -44,18 +44,29 @@ class GameManager:
 		# playerIndex -> playerInfo
 		playerInfo = json["allPlayers"][playerIndex]
 
-		# playerInfo -> various stuff
+		# playerInfo -> championName and skinID
 		championName = playerInfo["championName"]
 		skinID: int = playerInfo["skinID"]
 		self.team = playerInfo["team"]
 
+		# championName and skinID -> championRawID + skinRawID (for community dragon)
 		championRosterURL = "http://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-summary.json"
 		championRoster = requests.get(championRosterURL).json()  # TODO might fail
 		championRosterEntryGet = [entry for entry in championRoster if entry['name'] == championName]
 		championRosterEntry = championRosterEntryGet[0]
 		championRawID: int = championRosterEntry["id"]
-		# championAlias = championRosterEntry["alias"]  # TODO don't need this
 		skinRawID = 1000*championRawID + skinID
+
+		# Get a good image, whether it's a base character, skin, or chroma
+		splashURL = f"https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-splashes/{championRawID}/{skinRawID}.jpg"
+		res = requests.get(splashURL)
+		if res.status_code == 404:
+			chromaURL = f"https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-chroma-images/{championRawID}/{skinRawID}.png"
+			res = requests.get(chromaURL)
+		if res.status_code != 200:
+			raise ConnectionError(f"Error code {res.status_code} when getting art for {skinRawID}.")
+		img = np.array(Image.open(BytesIO(res.content)).convert('RGB'))
+
 
 		# Find skinName by checking skinRawID against every skin and every chroma for that champion
 		championInfoURL = f"http://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champions/{championRawID}.json"
@@ -79,29 +90,8 @@ class GameManager:
 			i += 1
 
 		# TODO remove this after everything works
+		# this line adds the skinRawID in the name of the scene
 		skinName = f"{skinName} ({skinRawID})"
-
-		# Get a good image, whether it's a base character, skin, or chroma
-		splashURL = f"https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-splashes/{championRawID}/{skinRawID}.jpg"
-		res = requests.get(splashURL)
-		if res.status_code == 404:
-			chromaURL = f"https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-chroma-images/{championRawID}/{skinRawID}.png"
-			res = requests.get(chromaURL)
-		if res.status_code != 200:
-			raise ConnectionError(f"Error code {res.status_code} when getting art for {skinRawID}.")
-		img = np.array(Image.open(BytesIO(res.content)).convert('RGB'))
-
-
-		# if np.shape(img)[2] = 4, then we've got RGBA
-		# let's convert it to RGB on a white background
-		# first compute delta = 255 - RGB
-		# then compute A = RGB[:,:,3]
-		# if A = 0, we add the full delta
-		# if A = 1, we add none of the delta
-		# thus, we finally compute RGB + (1-A)*delta
-
-
-
 
 		self.scene_id = model.img_to_scene(img, skinName, queryman)
 
@@ -110,6 +100,28 @@ class GameManager:
 		self.main_loop()
 		queryman.delete_scene(self.scene_id)
 		queryman.apply_light_states(states)
+
+	@staticmethod
+	def get_champion_img(championName, skinID):
+		# championName and skinID -> championRawID + skinRawID (for community dragon)
+		championRosterURL = "http://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-summary.json"
+		championRoster = requests.get(championRosterURL).json()  # TODO might fail
+		championRosterEntryGet = [entry for entry in championRoster if entry['name'] == championName]
+		championRosterEntry = championRosterEntryGet[0]
+		championRawID: int = championRosterEntry["id"]
+		skinRawID = 1000 * championRawID + skinID
+
+		# Get a good image, whether it's a base character, skin, or chroma
+		# First try the splashURL. If that 404s..
+		splashURL = f"https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-splashes/{championRawID}/{skinRawID}.jpg"
+		res = requests.get(splashURL)
+		if res.status_code == 404:  # ..then it's a chroma
+			chromaURL = f"https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-chroma-images/{championRawID}/{skinRawID}.png"
+			res = requests.get(chromaURL)
+		if res.status_code != 200:
+			raise ConnectionError(f"Error code {res.status_code} when getting art for {skinRawID}.")
+		img = np.array(Image.open(BytesIO(res.content)).convert('RGB'))
+		return img
 
 	def main_loop(self):
 		while True:
