@@ -1,6 +1,6 @@
 """
 Conversion structure:
-XYB <--> RGB <--> HSV'
+XYB <--> RGB <--> HSV
 Thus, a conversion from XYB to HSV necessitates an intermediary conversion to RGB
 
 
@@ -19,8 +19,7 @@ import numpy as np
 
 
 
-# TODO remove this?
-# Input a single 0-255 RGB pixel. Output hexcode
+# Input a single 0-255 RGB pixel. Output hexcode as string
 def rgb_to_hex(rgb):
     return '#{:02X}{:02X}{:02X}'.format(*rgb)
 
@@ -261,23 +260,3 @@ def mask_pixels_by_channel(img, channel_index, channel_filter, blank=[0, 0, 0]):
     pixels[marked_pixel_coords] = objective
     filtered_img = unflatten_image(dim, pixels)
     return filtered_img
-
-#foo = np.array([[[6*x+3*y, 8*x+4*y, 10*x+5*y] for x in range(3)] for y in range(3)])
-#bar = filter_pixels_by_channel(foo, 2, lambda x: x > 10, blank=[255,255,255])
-
-"""
-    xyb = rgb_img_to_xyb_img(rgb)
-
-    brightnesses = xyb[:,:,2]
-    pixels_to_wipe = brightnesses < threshold
-    pixel_coords = np.nonzero(pixels_to_wipe)
-    num_of_pixels_to_wipe = np.shape(pixel_coords)[1]
-
-    r0 = np.repeat(pixel_coords[0], 3)
-    r1 = np.repeat(pixel_coords[1], 3)
-    r2 = np.tile(np.array([0,1,2], dtype=np.int64), num_of_pixels_to_wipe)
-    coords = (r0, r1, r2)
-
-    rgb[coords] = 255
-    return(rgb)
-    """
