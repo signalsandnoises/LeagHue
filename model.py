@@ -108,17 +108,17 @@ def img_to_scene(img, scene_name: str, queryman: QueryManager, debugging=False) 
 
     ## SECTION THREE: PLOTTING EVERYTHING SO FAR
     if debugging:
-        plt.subplot(1, 5, 1)
+        plt.subplot(1, 4, 1)
         plt.title(scene_name)
         plt.imshow(img)
 
-        plt.subplot(1, 5, 2)
+        plt.subplot(1, 4, 2)
         plt.title("{:.2%} pixels retained\nsat > {}, bri > {}".format(prop_pixels_retained,
                                                                       sat_threshold,
                                                                       bri_threshold))
         plt.imshow(img_rgb_masked)
 
-        plt.subplot(1, 5, 3, polar=True, theta_offset=np.pi / 2, theta_direction=-1)
+        plt.subplot(1, 4, 3, polar=True, theta_offset=np.pi / 2, theta_direction=-1)
         pixels_hsv_flat = np.copy(pixels_hsv)
         pixels_hsv_flat[2] = 1
         pixels_rgb_flat = hsv_to_rgb(np.copy(pixels_hsv_flat))
@@ -130,6 +130,8 @@ def img_to_scene(img, scene_name: str, queryman: QueryManager, debugging=False) 
                     color=color_centers_hex_flat, marker="o", edgecolors="black", s=50)
         plt.title("HS space")
 
+
+        """
         plt.subplot(1, 5, 4)
         pixels_xyb_flat = rgb_to_xyb(pixels_rgb_flat)
         plt.scatter(pixels_xyb_flat[0], pixels_xyb_flat[1],
@@ -141,8 +143,9 @@ def img_to_scene(img, scene_name: str, queryman: QueryManager, debugging=False) 
         plt.plot([0.6915, 0.17, 0.1532, 0.6915], [0.3038, 0.7, 0.0475, 0.3038], color="black", linewidth=2)
         plt.gca().set_aspect('equal')
         plt.title("XY space")
+        """
 
-        plt.subplot(1, 5, 5)
+        plt.subplot(1, 4, 4)
         ax = plt.gca()
         for i in range(n_clusters):
             ax.add_patch(Rectangle((0, i / n_clusters), 0.5, 1 / n_clusters,
