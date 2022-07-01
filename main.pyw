@@ -1,59 +1,29 @@
-# A development script to experiment on pulling Hue colors from splash art.
-# This file uses the deprecated phue library, which uses the deprecated PHue art.
+# LeagHue is developed by Rishabh Verma (https://github.com/vermarish)
+# If you're
+#
+# This file contains the main loop for LeagHue. Its general structure is as follows:
+#  * Wait 10 seconds at a time to see if a game has begun loading (idle)
+#    * Once a game has begun loading, wait 0.05 seconds at a time to see if the game has started (active)
+#    * Once the game has started, get the current light state and pass control to GameManager.
+#    * Once the game has ended, apply the saved light state and return to idle.
+
 
 import requests
-import random
-import numpy as np
-from PIL import Image
-from io import BytesIO
-import urllib3
 from configparser import ConfigParser
-from colorlib import *
 from QueryManager import QueryManager
 from GameState import GameManager
 from time import sleep
-import model
+import logging
 
-# League constants
-patch = requests.get("https://ddragon.leagueoflegends.com/api/versions.json").json()[0]
-data_dragon_url = f"https://ddragon.leagueoflegends.com/cdn/{patch}/data/en_US/"
+logging.basicConfig(filename="debug.log", level=logging.DEBUG)
+
 # Hue constants
 config = ConfigParser()
 config.read('config.ini')
-address = config["Philips Hue"]['bridge_address']
-user = config["Philips Hue"]['user']
-key = config["Philips Hue"]['key']
-groupID = config["Philips Hue"]['group_id']
-groupType = config["Philips Hue"]['group_type']
-
 gamedata_url = "https://127.0.0.1:2999/liveclientdata/allgamedata/"
-base_request_url = f"https://{address}/clip/v2/resource"
-
-# From a championID and skinID, get the url to query its splash art.
-# If none is given, generate the url for a random skin's splash.
-def splash_url(championID=None, skinID=None) -> str:
-    if championID is None or skinID is None:
-        allChampionData = requests.get(data_dragon_url+"champion.json").json()["data"]
-        randomChampionID = random.choice(list(allChampionData.keys()))
-        randomChampionData = requests.get(f"{data_dragon_url}champion/{randomChampionID}.json").json()
-        numberOfSkins = len(randomChampionData["data"][randomChampionID]["skins"])
-        randomSkinID = random.randint(0, numberOfSkins)
-        championID = randomChampionID
-        skinID = randomSkinID
-    return f"https://ddragon.leagueoflegends.com/cdn/img/champion/loading/{championID}_{skinID}.jpg"
-
-
-# Fetch from url and return image as np array.
-# Returns None if no image is found.
-def load_image(url) -> np.ndarray:
-    res = requests.get(url)
-    if res.status_code != 200:
-        return None
-    img = np.array(Image.open(BytesIO(res.content)))
-    return img
-
 queryman = QueryManager(config)
 
+logging.info("Waiting for game..")
 i = 1
 ## Main loop
 while True:
@@ -68,11 +38,13 @@ while True:
 		i += 1
 		sleep(10)
 
-	if response is not None:  # Client's running.
+	if response is not None:
+		logging.info("Game client is running")
 		json = response.json()
 		if 'events' in json:  # wait for the game to officially start
+			logging.info("Game is providing events")
 			if len(json['events']['Events']) > 0:
-				print("Game started.")
+				print("GameStart event")
 				intergame_state = queryman.get_light_states()
 
 				# The GameManager object takes care of the entire League game upon instantiation
@@ -81,29 +53,5 @@ while True:
 
 				queryman.apply_light_states(intergame_state)
 
+		logging.debug("Game client has not started.")
 		sleep(0.05) # We poll at 20 Hz if the HTTP connection works but the game hasn't started.
-
-
-
-## The League client is https only with an insecure cert.
-#  We'll just.. suppress it for now. It's all on localhost
-#  anyway, who's going to invade us?  TODO
-urllib3.disable_warnings()
-
-league_address = "https://127.0.0.1:2999/liveclientdata/allgamedata/"
-
-
-
-
-
-
-
-
-
-
-
-scene_name = f"{champion}_{skinID}"
-scene_id = model.img_to_scene(img, scene_name, queryman=queryman)
-queryman.recall_dynamic_scene(scene_id)
-
-queryman.delete_scene(scene_id)

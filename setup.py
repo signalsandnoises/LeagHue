@@ -51,7 +51,7 @@ def connectToBridge():
     # Configure to use the selected bridge
     address = bridges[bridge_index]['internalipaddress']
     bridge_id = bridges[bridge_index]['id']
-    config["Philips Hue"] = {'bridge_address': address}
+    config["Philips Hue"] = {'bridge_address': address, 'bridge_id': bridge_id}
     print(f"Configured to access Hue bridge {bridge_index+1} at {address}")
     return (address, bridge_id)
 

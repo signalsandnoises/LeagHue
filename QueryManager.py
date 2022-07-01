@@ -7,6 +7,7 @@ import colorlib
 import numpy as np
 from scipy.optimize import fsolve
 import threading
+import logging
 
 class QueryManager:
     def __init__(self, config: ConfigParser):
