@@ -1,3 +1,4 @@
+import urllib3
 import requests
 from time import sleep, time
 from typing import Callable
@@ -9,6 +10,8 @@ import threading
 
 class QueryManager:
     def __init__(self, config: ConfigParser):
+        urllib3.disable_warnings()  # TODO figure out SSL stuff
+
         # store these for resource requesting methods
         self.user = config["Philips Hue"]["user"]
         self.key = config["Philips Hue"]['key']
@@ -252,6 +255,7 @@ class QueryManager:
                           json=json,
                           verify=False,  # TODO figure out SSL stuff
                           **kwargs)
+
             if res.status_code >= 300:
                 raise ConnectionError
             return res.json()['data']
