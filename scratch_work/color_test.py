@@ -18,19 +18,20 @@ from GameState import GameManager
 championName = "Aatrox"
 skinID = 0
 
+supertick = time()
 
 tick = time()
 (championRawID, skinRawID) = GameManager.get_community_dragon_info(championName, skinID)
 img = GameManager.get_champion_img(championRawID, skinRawID)
 tock = time()
-print(f"Fetching suitable image: {tock - tick}")
+print(f"1. Fetch an image: {tock - tick:.2f}s")
 
 config = ConfigParser()
 config.read('../config.ini')
 tick = time()
 queryman = QueryManager(config)
 tock = time()
-print(f"QueryManager constructor: {tock - tick}")
+print(f"2. Construct QueryManager: {tock - tick:.2f}s")
 
 
 scene_name = f"{championName}_{skinID}"
@@ -38,8 +39,13 @@ tick = time()
 # TODO look at expensive image processing here
 scene_id = model.img_to_scene(img, scene_name, queryman=queryman, debugging=True)
 tock = time()
-print(f"Model: {tock - tick}")
+print(f"3. model.img_to_scene: {tock - tick:.2f}s")
+
+supertock = time()
+print(f"Total duration: {supertock-supertick:.2f} s")
+
 queryman.recall_dynamic_scene(scene_id)
 queryman.delete_scene(scene_id)
 plt.show()
 queryman.set_color()
+
