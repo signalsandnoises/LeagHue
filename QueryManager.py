@@ -11,6 +11,7 @@ import logging
 
 class QueryManager:
     def __init__(self, config: ConfigParser):
+        logging.info("Starting QueryManager..")
         urllib3.disable_warnings()  # TODO figure out SSL stuff
 
         # store these for resource requesting methods
@@ -35,6 +36,7 @@ class QueryManager:
                 child['rid'] = light_id
                 child['rtype'] = 'light'
         self.light_ids = [child['rid'] for child in group['children']]
+        logging.info("Started QueryManager")
 
 
     def get_light_states(self, light_ids=None):
@@ -62,7 +64,7 @@ class QueryManager:
             self.put_resource(f"/light/{light_id}", json=state)
 
 
-    def set_color(self, *light_ids, x: float = 0.31271, y: float = 0.32902,
+    def set_color(self, *light_ids, x: float = 0.31271, y: float = 0.32902,  # default white
                   duration_ms = 400, brightness=None, **kwargs):
         if len(light_ids) == 0:
             light_ids = self.light_ids
@@ -84,34 +86,34 @@ class QueryManager:
         return_to: the id of a scene to return to.
         """
 
+        """OLD CODE, used to compute the hard-coded x-y points below
+           #  colors                 R    Y    YG   BG   C    B    I    V    M
+           hsv_gamut = np.array([[   0,  36,  72, 148, 180, 200, 252, 288, 324],
+                                 [   1,   1,   1,   1,   1, 0.8, 0.5, 0.8, 0.8],
+                                 [   1,   1,   1,   1,   1,   1,   1,   1,   1]])
+           transition_coeffs =   [   1,   1,   1,   1,   1,   1,   1,   1,   1]
+           
+           # RGB is 0, 135, 257
+           hsv_gamut = np.array([[   0,  125,  200, 300, 0],
+                                 [   1,   1,    0.8, 0.5, 0.9],
+                                 [   1,   1,    1,   1,   1]])
+           transition_coeffs = np.array(
+                                 [   1,   3,   2.5,   2,   2])
+           transition_coeffs = transition_coeffs / np.mean(transition_coeffs)
+           
+           rgb_gamut = colorlib.hsv_to_rgb(hsv_gamut)
+           xy_gamut = colorlib.rgb_to_xyb(rgb_gamut)
+           x = xy_gamut[0]
+           y = xy_gamut[1]
+           n_points = len(x)
+           """
+
         x = [0.64007440, 0.29887321, 0.20410905, 0.31840055, 0.62558534]
         y = [0.32997046, 0.59594318, 0.23778214, 0.20785135, 0.32992757]
         transition_coeffs = [1, 3, 2, 2, 2]
         scalar = len(transition_coeffs) / sum(transition_coeffs)
         transition_coeffs = [scalar * coeff for coeff in transition_coeffs]
         n_points = 5
-
-        """OLD CODE
-        #                         R    Y    YG   BG   C    B    I    V    M
-        hsv_gamut = np.array([[   0,  36,  72, 148, 180, 200, 252, 288, 324],
-                              [   1,   1,   1,   1,   1, 0.8, 0.5, 0.8, 0.8],
-                              [   1,   1,   1,   1,   1,   1,   1,   1,   1]])
-        transition_coeffs =   [   1,   1,   1,   1,   1,   1,   1,   1,   1]
-
-        # RGB is 0, 135, 257
-        hsv_gamut = np.array([[   0,  125,  200, 300, 0],
-                              [   1,   1,    0.8, 0.5, 0.9],
-                              [   1,   1,    1,   1,   1]])
-        transition_coeffs = np.array(
-                              [   1,   3,   2.5,   2,   2])
-        transition_coeffs = transition_coeffs / np.mean(transition_coeffs)
-
-        rgb_gamut = colorlib.hsv_to_rgb(hsv_gamut)
-        xy_gamut = colorlib.rgb_to_xyb(rgb_gamut)
-        x = xy_gamut[0]
-        y = xy_gamut[1]
-        n_points = len(x)
-        """
 
         request_duration_s = time_per_cycle / n_points
         request_duration_ms = int(request_duration_s * 1000)

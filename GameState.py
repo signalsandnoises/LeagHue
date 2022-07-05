@@ -1,7 +1,6 @@
-# TODO refactor all other mentions of state to "environment"
-# when referencing Hue colors.
+# Contains code to monitor the League of Legends game client and retrieve associated game information from
+# external websites
 
-from json import loads as str2json
 import requests
 from time import sleep
 from QueryManager import QueryManager
@@ -42,7 +41,7 @@ class GameManager:
         while json["allPlayers"][playerIndex]["summonerName"] != self.summonerName:
             playerIndex += 1
             if playerIndex >= 10:
-                raise AttributeError("Player not found in API")
+                logging.error("Player not found in API")
 
         # playerIndex -> playerInfo
         playerInfo = json["allPlayers"][playerIndex]
@@ -76,8 +75,8 @@ class GameManager:
                     j += 1
             i += 1
 
-        logging.info(f"Summoned {championName} with skin # {skinID}")
-        logging.debug(f"Community Dragon for {skinName}: championRawID {championRawID}, skinRawID {skinRawID}")
+        logging.info(f"Summoned {skinName} ({championName}, {skinID})")
+        logging.debug(f"Community Dragon details: championRawID {championRawID}, skinRawID {skinRawID}")
 
         self.scene_id = model.img_to_scene(img, skinName, queryman)
 
