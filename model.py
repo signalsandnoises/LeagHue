@@ -21,7 +21,7 @@ def img_to_scene(img, scene_name: str, queryman: QueryManager, debugging=False) 
     subtick = time()
     print(f"\t(debugging={debugging})")
     if debugging:
-        img_hsv = rgb_img_to_hsv_img(img)
+        img_hsv = rgb_img_to_hsv_img(img)  # convert
         # First mask the HSV pixels with low S or low V
         img_hsv_masked = mask_pixels_by_channel(img=img_hsv,
                                                 channel_index=1,
@@ -41,22 +41,13 @@ def img_to_scene(img, scene_name: str, queryman: QueryManager, debugging=False) 
         pixels_hsv_tidy = np.array([px for px in np.transpose(pixels_hsv_unfiltered) if not np.array_equal(px, blank_hsv)])
         pixels_hsv = np.transpose(pixels_hsv_tidy)
         prop_pixels_retained = np.shape(pixels_hsv)[1] / (np.shape(img_hsv)[0] * np.shape(img_hsv)[1])
-        # pixels_rgb = hsv_to_rgb(pixels_hsv)
-        pixels_xyb = rgb_to_xyb(hsv_to_rgb(np.copy(pixels_hsv)))
-        pixels_xyb_tidy = np.transpose(pixels_xyb)
     else:
-        dim, pixels_rgb = flatten_image(img)
-        pixels_rgb = pixels_rgb[:, np.any(pixels_rgb > int(bri_threshold*255), axis=0)]
-        pixels_hsv = rgb_to_hsv(pixels_rgb)
-
-
-        pixels_hsv_tidy = np.transpose(pixels_hsv)
-        pixels_hsv_tidy = pixels_hsv_tidy[np.nonzero((pixels_hsv[1] > sat_threshold)
+        dim, pixels_rgb = flatten_image(img)  # flatten
+        pixels_hsv = rgb_to_hsv(pixels_rgb)  # convert
+        pixels_hsv_tidy = np.transpose(pixels_hsv)  # transpose
+        pixels_hsv_tidy = pixels_hsv_tidy[np.nonzero((pixels_hsv[1] > sat_threshold)  # filter
                                                      * (pixels_hsv[2] > bri_threshold))]
-
         pixels_hsv = np.transpose(pixels_hsv_tidy)
-        pixels_xyb = rgb_to_xyb(hsv_to_rgb(np.copy(pixels_hsv)))
-        # pixels_xyb_tidy = np.transpose(pixels_xyb)
 
     subtock = time()
     print(f"\t3a. Filter the image: {subtock - subtick:.2f}s")
@@ -121,20 +112,6 @@ def img_to_scene(img, scene_name: str, queryman: QueryManager, debugging=False) 
                     color=color_centers_hex_flat, marker="o", edgecolors="black", s=50)
         plt.title("HS space")
 
-
-        """
-        plt.subplot(1, 5, 4)
-        pixels_xyb_flat = rgb_to_xyb(pixels_rgb_flat)
-        plt.scatter(pixels_xyb_flat[0], pixels_xyb_flat[1],
-                    color=pixel_colors_hex, s=5, alpha=0.05)
-        plt.scatter(color_centers_xyb_flat[0], color_centers_xyb_flat[1],
-                    color=color_centers_hex_flat, marker="o", edgecolors="black", s=50)
-        plt.xlim([0.1, 0.7])
-        plt.ylim([0, 0.75])
-        plt.plot([0.6915, 0.17, 0.1532, 0.6915], [0.3038, 0.7, 0.0475, 0.3038], color="black", linewidth=2)
-        plt.gca().set_aspect('equal')
-        plt.title("XY space")
-        """
 
         plt.subplot(1, 4, 4)
         ax = plt.gca()
