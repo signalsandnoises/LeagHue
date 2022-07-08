@@ -3,3 +3,4 @@ config.txt
 config.ini
 *.db
 img/*
+*.log

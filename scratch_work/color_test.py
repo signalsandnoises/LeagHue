@@ -1,22 +1,17 @@
 # A development script to experiment on pulling Hue colors from splash art.
 # This file uses the deprecated phue library, which uses the deprecated PHue art.
 
-import requests
-import random
-import numpy as np
-from PIL import Image
-from io import BytesIO
+
 from matplotlib import pyplot as plt
 from configparser import ConfigParser
-from colorlib import *
 from QueryManager import QueryManager
 import model
 from time import time
 from GameState import GameManager
 
 # EDIT THESE
-championName = "Aatrox"
-skinID = 0
+championName = "Morgana"
+skinID = 47
 
 supertick = time()
 
