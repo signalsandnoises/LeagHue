@@ -25,7 +25,7 @@ class QueryManager:
         group_objects = self.get_resource(f"/{self.group_type}")
         group_query = [group for group in group_objects if group['id'] == self.group_id]
         if len(group_query) != 1:
-            self.__log_error(Exception("Could not find a unique group matching the configured id."))
+            logging.error("Could not find a unique light group matching the configured id", group_objects, group_query)
         group = group_query[0]
 
         for child in group['children']:
@@ -263,16 +263,8 @@ class QueryManager:
                 raise ConnectionError
             return res.json()['data']
         except Exception as e:
-            self.__log_error(e)
+            logging.error(e, request_url, request_header, json, kwargs)
             return None
-
-
-
-    def __log_error(self, e: Exception):
-        """
-        TODO implement actual logging.
-        """
-        print(e)
 
 
     def _color(self, x, y):
@@ -286,6 +278,10 @@ class QueryManager:
             }
         }
 
+
+
+
+# For testing the rainbow() function, so that it looks good.
 if __name__ == "__main__":
     parser = ConfigParser()
     parser.read("config.ini")
