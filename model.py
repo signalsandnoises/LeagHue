@@ -18,19 +18,26 @@ def img_to_scene(img, scene_name: str, queryman: QueryManager, debugging=False) 
     ##
     subtick = time()
 
-    sat_threshold = 0.2  # 0.2
-    bri_threshold = 0.5  # 0.5
 
-    # determines whether we keep a pixel or not
-    # inputs three channel vectors and returns a boolean vector
-    filter = lambda h, s, v: (s > sat_threshold) & (v > bri_threshold)
 
     # changes an individual pixel
     # inputs three channel vectors and returns a 3xN pixel grid
     effect = lambda h, s, v: np.array([h, s, np.repeat(1, len(v))])
 
     dim, pixels_rgb = flatten_image(img)
+
     pixels_hsv = rgb_to_hsv(pixels_rgb)
+
+    sat_threshold = 0.1
+    bri_threshold = 0.1
+
+    information = (pixels_hsv[1] + pixels_hsv[2])/2
+    information_cutoff = np.percentile(information, [75])[0]
+
+    # determines whether we keep a pixel or not
+    # inputs three channel vectors and returns a boolean vector
+    filter = lambda h, s, v: (s > sat_threshold) & (v > bri_threshold) & ((s+v)/2 > information_cutoff)
+
     pixels_to_keep = filter(pixels_hsv[0], pixels_hsv[1], pixels_hsv[2])
     if debugging:
         print(f"\t(debugging={debugging})")
@@ -56,15 +63,20 @@ def img_to_scene(img, scene_name: str, queryman: QueryManager, debugging=False) 
                             pixels_hsv[1,:],
                             pixels_hsv[2,:])
         pixels_hsv_tidy = np.transpose(pixels_hsv)  # transpose for clustering
-
-    # TODO what if I flatten all the pixel's Vs to 1 at this stage, before clustering?
-    #pixels_hsv_tidy[:, 2] = 1
-
     subtock = time()
     print(f"\t3a. Filter the image: {subtock - subtick:.2f}s")
+
+
     ##
     ## SECTION TWO: SELECTING A COLOR PALETTE
     ##
+    # TODO I should balance the hues going in, shouldn't I...
+    """
+    v_x = sum(np.cos(pixels_hsv[0] * 2 * np.pi / 360))
+    v_y = sum(np.sin(pixels_hsv[0] * 2 * np.pi / 360))
+    mean_hue = np.arctan2(v_y, v_x)
+    opposite_hue = ((mean_hue + np.pi) % (2 * np.pi)) * (360 / (2 * np.pi))
+    """
 
     n_clusters = 6
     subtick = time()
@@ -74,9 +86,8 @@ def img_to_scene(img, scene_name: str, queryman: QueryManager, debugging=False) 
     print(f"\t3b. Cluster the pixels: {subtock - subtick:.2f}s")
     color_centers_hsv = np.transpose(kmeans.cluster_centers_)
 
-    # We're not done here.
-
     subtick = time()
+    # We're not done here.
     # First, color centers need to be ordered in a way that is not jarring.
     hue = color_centers_hsv[0]
     v_x = sum(np.cos(hue * 2 * np.pi / 360))
@@ -119,7 +130,7 @@ def img_to_scene(img, scene_name: str, queryman: QueryManager, debugging=False) 
         ax_img.set_title(scene_name)
 
         # Plot the filtered image
-        ax_filtered_img.set_title("{:.2%} pixels retained\nsat > {}, bri > {}".format(prop_pixels_retained,
+        ax_filtered_img.set_title("{:.2%} pixels retained\nsat > {:.2f}, bri > {:.2f}".format(prop_pixels_retained,
                                                                                       sat_threshold,
                                                                                       bri_threshold))
         ax_filtered_img.imshow(img_rgb_filtered)
