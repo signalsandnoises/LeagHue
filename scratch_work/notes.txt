@@ -23,13 +23,27 @@ Data flow:
 Goals:
     Seraphine_3 should have a nice spread of colors.
     Senna_0 should not select red.
+    Ashe_0 should be all blues, no pink
+    Vex_0 should get more of the extreme greens somehow
+    Leona_11 shouldn't include skin tones
+
+
 
 Ideas:
     To select k, perform clustering with a large k, say k=12.
     For each k, weight them proportionally by the # of points in that cluster and to the saturation of that cluster center
 
+
+    Wait what if we choose k so that we get colors that aren't too far
+    For example, Nurse Akali (Akali 4). With k=6, LeagHue picks up 5 shades of icy blue, and 1 shade of purple
+    I reckon this distribution, if you were to "un-modularize" the Hue scale, has a high skew
+    So maybe you can try a few k's and pick the one with the least skew
+
+
+
 Tickets:
-* Implement a logger
-* Build a better coloring model
-* Reduce model time.
+* Colors should be modular around 360 going into the model
+* Try blurring the image going in, to remove detail lines.
+* Build a better coloring model (maybe k-means isn't so great information entropy-wise)
+* Deprioritize skin tones and prioritize gold tones somehow idk maybe that's just a symptom of a model that doesn't include location
 * Monitor system processes for `LeagueClient.exe` so that LeagHue can check less frequently when you're not playing vidya.
