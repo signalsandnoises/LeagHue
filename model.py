@@ -71,12 +71,12 @@ def img_to_scene(img, scene_name: str, queryman: QueryManager, debugging=False) 
     ## SECTION TWO: SELECTING A COLOR PALETTE
     ##
     # TODO I should balance the hues going in, shouldn't I...
-    """
+
     v_x = sum(np.cos(pixels_hsv[0] * 2 * np.pi / 360))
     v_y = sum(np.sin(pixels_hsv[0] * 2 * np.pi / 360))
     mean_hue = np.arctan2(v_y, v_x)
-    opposite_hue = ((mean_hue + np.pi) % (2 * np.pi)) * (360 / (2 * np.pi))
-    """
+    opposite_hue_rad = ((mean_hue + np.pi) % (2 * np.pi))
+    mean_hue_rad = mean_hue
 
     n_clusters = 6
     subtick = time()
@@ -144,6 +144,8 @@ def img_to_scene(img, scene_name: str, queryman: QueryManager, debugging=False) 
                                color=pixel_colors_hex, s=5, alpha=0.5)
         ax_color_wheel.scatter(color_centers_hsv_flat[0] * 2 * np.pi / 360, color_centers_hsv_flat[1],
                                color=color_centers_hex_flat, marker="o", edgecolors="black", s=50)
+        ax_color_wheel.plot([opposite_hue_rad, opposite_hue_rad], [0,1], color="red")
+        ax_color_wheel.plot([mean_hue_rad, mean_hue_rad], [0, 1], color="blue")
         ax_color_wheel.set_title("HS space")
 
 
