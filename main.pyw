@@ -15,6 +15,7 @@ from time import sleep
 import logging
 
 logging.basicConfig(filename="debug.log", level=logging.DEBUG)
+logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 # Hue constants
 config = ConfigParser()
@@ -22,6 +23,8 @@ config.read('config.ini')
 gamedata_url = "https://127.0.0.1:2999/liveclientdata/allgamedata/"
 
 logging.info("Waiting for game..")
+
+
 ## Main loop
 while True:
 	# We'll detect for gamestart by determining whether the gamedata_url 404s
