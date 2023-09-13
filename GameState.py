@@ -58,7 +58,11 @@ class GameManager:
 
         # Find skinName by checking skinRawID against every skin and every chroma for that champion
         championInfoURL = f"http://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champions/{championRawID}.json"
-        championInfo = requests.get(championInfoURL).json()
+        try:
+            championInfo = requests.get(championInfoURL).json()
+        except Exception as e:
+            logging.error(f"Could not get champion info.")
+
         championSkins = championInfo["skins"]
         i = 0
         foundSkin = False

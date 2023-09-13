@@ -1,3 +1,9 @@
+"""
+This class provides an abstraction for querying the Philips Hue Bridge.
+This clsas does NOT provide an abstraction for querying the local game client or the Community Dragon. Those are
+done directly through requests.get() in GameState.py.
+"""
+
 import urllib3
 import requests
 from time import sleep, time
@@ -8,6 +14,8 @@ import numpy as np
 from scipy.optimize import fsolve
 import threading
 import logging
+
+
 
 class QueryManager:
     def __init__(self, config: ConfigParser):
@@ -252,6 +260,7 @@ class QueryManager:
         """request should be a query function in lib requests"""
         request_url = self.base_request_url + path
         request_header = {"hue-application-key": self.user}
+        logging.debug(f"Bridge Query. Path: {path}. Body: {json}")
         try:
             res = request(url=request_url,
                           headers=request_header,
